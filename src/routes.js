@@ -1,0 +1,50 @@
+import UserController from './controllers/controllers.js';
+import AuthController from './controllers/authController.js';
+import { requireAuth, optionalAuth } from './middleware/auth.js';
+
+// Function to register all routes
+async function routes(fastify, options) {
+
+    // ========== PUBLIC ROUTES ==========
+
+    // Main route - server information
+    fastify.get('/', UserController.getInfo);
+
+    // ========== AUTHENTICATION ROUTES ==========
+
+    // Start login process with Microsoft
+    fastify.get('/auth/login', AuthController.initiateLogin);
+
+    // Callback after Microsoft authentication
+    fastify.get('/auth/callback', AuthController.handleCallback);
+
+    // Validate existing session
+    fastify.get('/auth/validate', AuthController.validateCurrentSession);
+
+    // Logout
+    fastify.post('/auth/logout', AuthController.logout);
+
+    // ========== PROTECTED ROUTES (Require authentication) ==========
+
+    // Get current user information
+    fastify.get('/auth/me', { preHandler: requireAuth }, AuthController.getCurrentUser);
+
+    // User routes (protected)
+    fastify.get('/user', { preHandler: requireAuth }, UserController.getAllUsers);
+    fastify.get('/user/:id', { preHandler: requireAuth }, UserController.getUserById);
+    fastify.post('/user', { preHandler: requireAuth }, UserController.createUser);
+    fastify.put('/user/:id', { preHandler: requireAuth }, UserController.updateUser);
+    fastify.delete('/user/:id', { preHandler: requireAuth }, UserController.deleteUser);
+
+    // Server health route
+    fastify.get('/health', async (request, reply) => {
+        return {
+            status: 'ok',
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime(),
+            environment: process.env.NODE_ENV || 'development'
+        };
+    });
+}
+
+export default routes;

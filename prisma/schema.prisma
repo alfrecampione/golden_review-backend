@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["review"]
+}
+
+// Tabla de sesiones de Fastify (para cookies HTTP)
+model session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "IDX_session_expire")
+  @@map("session")
+  @@schema("review")
+}
+
+// Users table
+model User {
+  id          String    @id @default(uuid())
+  microsoftId String?   @unique
+  email       String    @unique
+  firstName   String?
+  lastName    String?
+  fullName    String?
+  department  String?
+  position    String?
+  lastAccess  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("user")
+  @@schema("review")
+}
+
+// Authentication logs table
+model AuthLog {
+  id            String   @id @default(uuid())
+  email         String
+  isSuccessful  Boolean
+  failureReason String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime @default(now())
+
+  @@index([email])
+  @@index([createdAt])
+  @@map("auth_log")
+  @@schema("review")
+}
