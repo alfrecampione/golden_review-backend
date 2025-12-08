@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["review"]
+  schemas  = ["goldenaudit"]
 }
 
 // Tabla de sesiones de Fastify (para cookies HTTP)
@@ -16,7 +16,7 @@ model session {
 
   @@index([expire], map: "IDX_session_expire")
   @@map("session")
-  @@schema("review")
+  @@schema("goldenaudit")
 }
 
 // Users table
@@ -34,7 +34,7 @@ model User {
   updatedAt   DateTime  @updatedAt
 
   @@map("user")
-  @@schema("review")
+  @@schema("goldenaudit")
 }
 
 // Authentication logs table
@@ -50,5 +50,5 @@ model AuthLog {
   @@index([email])
   @@index([createdAt])
   @@map("auth_log")
-  @@schema("review")
+  @@schema("goldenaudit")
 }
