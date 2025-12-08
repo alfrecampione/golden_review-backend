@@ -1,4 +1,4 @@
-import { PrismaClient } from './generated/prisma/index.js';
+import { PrismaClient } from '@prisma/client';
 
 // Create global Prisma instance
 let prisma;
@@ -18,6 +18,7 @@ if (process.env.NODE_ENV === 'production') {
 // Function to validate goldentrust.com email
 export const validateGoldenTrustEmail = (email) => {
     const allowedDomain = '@goldentrust.com';
+
     return email && email.toLowerCase().endsWith(allowedDomain.toLowerCase());
 };
 
