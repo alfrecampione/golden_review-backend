@@ -14,8 +14,9 @@ const fastify = Fastify({
 await fastify.register(import('@fastify/cors'), {
     origin: [
         process.env.BASE_URL,
-        'http://localhost:5173', // Vite dev server
-        'http://127.0.0.1:5173'
+        'http://localhost:5173', // Vite dev server (local)
+        'http://127.0.0.1:5173',
+        'http://dev-goldenaudit.goldentrustinsurance.com:5173' // AWS dev server
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
