@@ -7,7 +7,7 @@ import routes from './routes.js';
 dotenv.config();
 
 const fastify = Fastify({
-    logger: true
+    logger: false
 });
 
 // Configure CORS to allow requests from frontend
@@ -17,17 +17,16 @@ await fastify.register(import('@fastify/cors'), {
         'http://localhost:5173', // Vite dev server
         'http://127.0.0.1:5173'
     ],
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Set-Cookie']
 });
 
 // Configure cookies
 await fastify.register(import('@fastify/cookie'), {
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
-    parseOptions: {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax'
-    }
+    parseOptions: {}
 });
 
 // Configure sessions
@@ -35,12 +34,13 @@ await fastify.register(import('@fastify/session'), {
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
     cookieName: 'sessionId',
     cookie: {
-        secure: process.env.NODE_ENV === 'production', // HTTPS in production
+        secure: process.env.NODE_ENV === 'production', // Allow HTTP in development
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24, // 24 hours
-        sameSite: 'lax'
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', // 'none' for cross-origin in production
+        path: '/'
     },
-    saveUninitialized: false,
+    saveUninitialized: true, // Save session even if not modified
     rolling: true // Renew cookie on each request
 });
 

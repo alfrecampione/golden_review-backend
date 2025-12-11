@@ -15,6 +15,15 @@ if (process.env.NODE_ENV === 'production') {
     prisma = global.prisma;
 }
 
+// Test database connection
+prisma.$connect()
+    .then(() => {
+        console.log('✅ Database connected successfully');
+    })
+    .catch((error) => {
+        console.error('❌ Failed to connect to database:', error.message);
+    });
+
 // Function to validate goldentrust.com email
 export const validateGoldenTrustEmail = (email) => {
     const allowedDomain = '@goldentrust.com';

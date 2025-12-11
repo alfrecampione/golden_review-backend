@@ -12,11 +12,10 @@ async function routes(fastify, options) {
 
     // ========== AUTHENTICATION ROUTES ==========
 
-    // Start login process with Microsoft
-    fastify.get('/auth/login', AuthController.initiateLogin);
-
-    // Callback after Microsoft authentication
-    fastify.get('/auth/callback', AuthController.handleCallback);
+    // Create session (llamado por frontend después de autenticación exitosa en cliente)
+    fastify.post('/auth/session', async (request, reply) => {
+        return AuthController.createSession(request, reply);
+    });
 
     // Validate existing session
     fastify.get('/auth/validate', AuthController.validateCurrentSession);
