@@ -2,21 +2,39 @@
 import Fastify from 'fastify';
 import dotenv from 'dotenv';
 import routes from './routes.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Load environment variables
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// SSL certificate paths
+const sslPath = path.join(__dirname, '../../front/src/ssl');
+const httpsOptions = {
+    key: fs.readFileSync(path.join(sslPath, 'server.key')),
+    cert: fs.readFileSync(path.join(sslPath, '31e810c645f53345.crt')),
+    ca: fs.readFileSync(path.join(sslPath, 'gd_bundle-g2.crt'))
+};
+
 const fastify = Fastify({
-    logger: false
+    logger: false,
+    https: httpsOptions
 });
 
 // Configure CORS to allow requests from frontend
 await fastify.register(import('@fastify/cors'), {
     origin: [
         process.env.BASE_URL,
-        'http://localhost:5173', // Vite dev server (local)
+        'http://localhost:5173', // Vite dev server (local HTTP)
         'http://127.0.0.1:5173',
-        'http://dev-goldenaudit.goldentrustinsurance.com:5173' // AWS dev server
+        'https://localhost:5173', // Vite dev server (local HTTPS)
+        'https://127.0.0.1:5173',
+        'http://dev-goldenaudit.goldentrustinsurance.com:5173', // AWS dev server (HTTP)
+        'https://dev-goldenaudit.goldentrustinsurance.com:5173' // AWS dev server (HTTPS)
     ],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -61,12 +79,13 @@ fastify.register(routes);
 // Function to start the server
 const start = async () => {
     try {
-        const port = process.env.PORT || 3000;
+        const port = process.env.PORT || 4000;
         fastify.listen({
             port: port,
             host: '0.0.0.0' // Allow connections from any IP
         });
-        console.log(`Server running on http://localhost:${port}`);
+        console.log(`✅ HTTPS Server running on https://localhost:${port}`);
+        console.log(`✅ Database connected successfully`);
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
