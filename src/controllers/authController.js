@@ -113,8 +113,23 @@ class AuthController {
     // Logout
     static async logout(request, reply) {
         try {
+            const sessionId = request.session.sessionId;
+
             // Clear server session cookie
             request.session.destroy();
+
+            // Also delete session from database if sessionId exists
+            if (sessionId) {
+                try {
+                    await prisma.session.delete({
+                        where: { sid: sessionId }
+                    });
+                    console.log(`Session ${sessionId} deleted from database`);
+                } catch (dbError) {
+                    // Session might not exist in DB or already deleted - that's ok
+                    console.log('Session already removed from database or does not exist');
+                }
+            }
 
             return {
                 success: true,

@@ -1,5 +1,6 @@
 import UserController from './controllers/controllers.js';
 import AuthController from './controllers/authController.js';
+import PoliciesController from './controllers/policiesController.js';
 import { requireAuth, optionalAuth } from './middleware/auth.js';
 
 // Function to register all routes
@@ -34,6 +35,9 @@ async function routes(fastify, options) {
     fastify.post('/user', { preHandler: requireAuth }, UserController.createUser);
     fastify.put('/user/:id', { preHandler: requireAuth }, UserController.updateUser);
     fastify.delete('/user/:id', { preHandler: requireAuth }, UserController.deleteUser);
+
+    // Policies routes (protected)
+    fastify.get('/policies', { preHandler: requireAuth }, PoliciesController.getPolicies);
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
