@@ -73,6 +73,21 @@ export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
     }
 };
 
+// Function to fetch Microsoft avatar from entra.user_avatars
+export const getMSAPhotoPath = async (entraId) => {
+    try {
+        const result = await prisma.$queryRaw`SELECT s3_url AS photo FROM entra.user_avatars WHERE entra_id = ${entraId} LIMIT 1`;
+        if (Array.isArray(result) && result.length > 0) {
+            const photo = result[0].photo;
+            return photo ? String(photo) : null;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching Microsoft photo path:', error);
+        return null;
+    }
+};
+
 // Function to register authentication attempts
 export const registerAuthenticationAttempt = async (email, isSuccessful, failureReason = null, requestInfo = {}) => {
     try {

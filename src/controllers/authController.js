@@ -1,6 +1,7 @@
 import prisma, {
     createOrUpdateMicrosoftUser,
-    registerAuthenticationAttempt
+    registerAuthenticationAttempt,
+    getMSAPhotoPath
 } from '../prisma.js';
 
 class AuthController {
@@ -41,6 +42,9 @@ class AuthController {
             request.session.userId = dbUser.id;
             request.session.authenticated = true;
 
+            // Fetch Microsoft avatar path if available
+            const photoUrl = await getMSAPhotoPath(dbUser.id);
+
             return {
                 success: true,
                 message: 'Session created successfully',
@@ -51,7 +55,8 @@ class AuthController {
                     firstName: dbUser.firstName,
                     lastName: dbUser.lastName,
                     department: dbUser.department,
-                    position: dbUser.position
+                    position: dbUser.position,
+                    photoUrl: photoUrl || null
                 }
             };
 
@@ -87,6 +92,7 @@ class AuthController {
                     valid: false
                 };
             }
+            const photoUrl = await getMSAPhotoPath(user.id);
             return {
                 success: true,
                 valid: true,
@@ -97,7 +103,8 @@ class AuthController {
                     firstName: user.firstName,
                     lastName: user.lastName,
                     department: user.department,
-                    position: user.position
+                    position: user.position,
+                    photoUrl: photoUrl || null
                 }
             };
 
@@ -152,6 +159,7 @@ class AuthController {
             // Si llegamos aquí, el usuario está autenticado
             const user = request.user;
 
+            const photoUrl = await getMSAPhotoPath(user.id);
             return {
                 success: true,
                 user: {
@@ -161,7 +169,8 @@ class AuthController {
                     firstName: user.firstName,
                     lastName: user.lastName,
                     department: user.department,
-                    position: user.position
+                    position: user.position,
+                    photoUrl: photoUrl || null
                 }
             };
 
