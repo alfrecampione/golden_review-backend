@@ -6,11 +6,47 @@ class PoliciesController {
     /**
      * Get all policies with detailed information
      * Query joins policies with contacts and locations tables
+     * Supports pagination and search
      */
     static async getPolicies(request, reply) {
         try {
+            // Get pagination parameters from query
+            const page = parseInt(request.query.page) || 1;
+            const limit = parseInt(request.query.limit) || 25;
+            const search = request.query.search || '';
+            const offset = (page - 1) * limit;
+
+            // Build search condition
+            let searchCondition = '';
+            if (search) {
+                const searchLower = search.toLowerCase();
+                searchCondition = `AND (
+                    LOWER(p.policy_number) LIKE '%${searchLower}%' OR
+                    LOWER(c.display_name) LIKE '%${searchLower}%' OR
+                    LOWER(c1.display_name) LIKE '%${searchLower}%' OR
+                    LOWER(c2.display_name) LIKE '%${searchLower}%'
+                )`;
+            }
+
+            // Get total count for pagination
+            const countResult = await prisma.$queryRawUnsafe(`
+                SELECT COUNT(*) as total
+                FROM qq.policies p
+                INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
+                INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
+                INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
+                INNER JOIN qq.locations l ON l.location_id = c.location_id
+                WHERE p.binder_date >= '12/01/2025' 
+                    AND p.business_type = 'N' 
+                    AND l.location_type = 1
+                    ${searchCondition}
+            `);
+
+            const totalCount = Number(countResult[0].total);
+            const totalPages = Math.ceil(totalCount / limit);
+
             // Execute raw SQL query to get policies with all related data
-            const policies = await prisma.$queryRaw`
+            const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
                     c.display_name as insured_name, 
@@ -27,8 +63,10 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
+                    ${searchCondition}
                 ORDER BY p.binder_date
-            `;
+                LIMIT ${limit} OFFSET ${offset}
+            `);
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
@@ -43,7 +81,10 @@ class PoliciesController {
 
             return {
                 success: true,
-                count: serializedPolicies.length,
+                count: totalCount,
+                page: page,
+                limit: limit,
+                totalPages: totalPages,
                 data: serializedPolicies
             };
 
