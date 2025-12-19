@@ -5,7 +5,7 @@ import prisma, {
 } from '../prisma.js';
 
 // Define existing roles that are allowed to access the system
-const existing_roles = ['BasicUser', 'GoldenAuditUser', 'AdminUser'];
+const existing_roles = ['Manager', 'User', 'Admin'];
 
 class AuthController {
 
@@ -38,7 +38,7 @@ class AuthController {
             // Check if user has GoldenAuditUser role
             const roles = dbUser.roles || [];
             const hasValidRole = roles.some(role => existing_roles.includes(role));
-            
+
             if (!hasValidRole) {
                 // Registrar intento de autenticación fallido
                 await registerAuthenticationAttempt(
