@@ -28,7 +28,24 @@ class PoliciesController {
                 )`;
             }
 
-            // Execute raw SQL query to get policies with total count using window function
+            // First query to count total records
+            const countResult = await prisma.$queryRawUnsafe(`
+                SELECT COUNT(*) as total_count
+                FROM qq.policies p
+                INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
+                INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
+                INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
+                INNER JOIN qq.locations l ON l.location_id = c.location_id
+                WHERE p.binder_date >= '12/01/2025' 
+                    AND p.business_type = 'N' 
+                    AND l.location_type = 1
+                    ${searchCondition}
+            `);
+
+            const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
+            const totalPages = Math.ceil(totalCount / limit);
+
+            // Second query to get paginated results
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -37,8 +54,7 @@ class PoliciesController {
                     p.exp_date, 
                     c1.display_name as carrier, 
                     p.premium, 
-                    c2.display_name as csr,
-                    COUNT(*) OVER () as total_count
+                    c2.display_name as csr
                 FROM qq.policies p
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
@@ -51,10 +67,6 @@ class PoliciesController {
                 ORDER BY p.binder_date
                 LIMIT ${limit} OFFSET ${offset}
             `);
-
-            // Get total count from first row (same for all rows due to window function)
-            const totalCount = policies.length > 0 ? Number(policies[0].total_count) : 0;
-            const totalPages = Math.ceil(totalCount / limit);
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
@@ -106,7 +118,24 @@ class PoliciesController {
                 )`;
             }
 
-            // Execute raw SQL query to get policies with total count using window function
+            // First query to count total records
+            const countResult = await prisma.$queryRawUnsafe(`
+                SELECT COUNT(*) as total_count
+                FROM qq.policies p
+                INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
+                INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
+                INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
+                INNER JOIN qq.locations l ON l.location_id = c.location_id
+                WHERE p.binder_date >= '12/01/2025' 
+                    AND p.business_type = 'R' 
+                    AND l.location_type = 1
+                    ${searchCondition}
+            `);
+
+            const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
+            const totalPages = Math.ceil(totalCount / limit);
+
+            // Second query to get paginated results
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -115,8 +144,7 @@ class PoliciesController {
                     p.exp_date, 
                     c1.display_name as carrier, 
                     p.premium, 
-                    c2.display_name as csr,
-                    COUNT(*) OVER () as total_count
+                    c2.display_name as csr
                 FROM qq.policies p
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
@@ -129,10 +157,6 @@ class PoliciesController {
                 ORDER BY p.binder_date
                 LIMIT ${limit} OFFSET ${offset}
             `);
-
-            // Get total count from first row (same for all rows due to window function)
-            const totalCount = policies.length > 0 ? Number(policies[0].total_count) : 0;
-            const totalPages = Math.ceil(totalCount / limit);
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
