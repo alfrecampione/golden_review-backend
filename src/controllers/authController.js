@@ -4,6 +4,9 @@ import prisma, {
     getMSAPhotoPath
 } from '../prisma.js';
 
+// Define existing roles that are allowed to access the system
+const existing_roles = ['BasicUser', 'GoldenAuditUser', 'AdminUser'];
+
 class AuthController {
 
     // Crear sesión con datos de usuario (llamado por el frontend después de autenticación exitosa)
@@ -20,6 +23,7 @@ class AuthController {
             }
 
             // Crear o actualizar usuario en la base de datos
+            // Pass roles from Azure AD to be stored in the database
             const dbUser = await createOrUpdateMicrosoftUser({
                 id: user.microsoftId,
                 displayName: user.name || `${user.firstName} ${user.lastName}`,
@@ -27,8 +31,29 @@ class AuthController {
                 givenName: user.firstName,
                 surname: user.lastName,
                 jobTitle: user.position,
-                department: user.department
+                department: user.department,
+                roles: user.roles || [] // Store roles from Azure AD
             });
+
+            // Check if user has GoldenAuditUser role
+            const roles = dbUser.roles || [];
+            const hasValidRole = roles.some(role => existing_roles.includes(role));
+            
+            if (!hasValidRole) {
+                // Registrar intento de autenticación fallido
+                await registerAuthenticationAttempt(
+                    dbUser.email,
+                    false,
+                    'Missing required role from existing_roles',
+                    { ip: request.ip, userAgent: request.headers['user-agent'] }
+                );
+
+                return reply.code(403).send({
+                    success: false,
+                    error: 'Access denied',
+                    message: 'Required role not found'
+                });
+            }
 
             // Registrar intento de autenticación exitoso
             await registerAuthenticationAttempt(
@@ -56,6 +81,7 @@ class AuthController {
                     lastName: dbUser.lastName,
                     department: dbUser.department,
                     position: dbUser.position,
+                    roles: dbUser.roles || [],
                     photoUrl: photoUrl || null
                 }
             };
@@ -104,6 +130,7 @@ class AuthController {
                     lastName: user.lastName,
                     department: user.department,
                     position: user.position,
+                    roles: user.roles || [],
                     photoUrl: photoUrl || null
                 }
             };
@@ -170,6 +197,7 @@ class AuthController {
                     lastName: user.lastName,
                     department: user.department,
                     position: user.position,
+                    roles: user.roles || [],
                     photoUrl: photoUrl || null
                 }
             };

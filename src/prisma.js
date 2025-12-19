@@ -33,7 +33,7 @@ export const validateGoldenTrustEmail = (email) => {
 
 // Function to create or update user from Microsoft
 export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
-    const { id: microsoftId, mail, displayName, givenName, surname, jobTitle, department } = microsoftProfile;
+    const { id: microsoftId, mail, displayName, givenName, surname, jobTitle, department, roles } = microsoftProfile;
 
     // Validate that email is from goldentrust.com
     if (!validateGoldenTrustEmail(mail)) {
@@ -51,6 +51,7 @@ export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
                 fullName: displayName,
                 department: department,
                 position: jobTitle,
+                roles: roles || [],
                 lastAccess: new Date(),
             },
             create: {
@@ -62,6 +63,7 @@ export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
                 fullName: displayName,
                 department: department,
                 position: jobTitle,
+                roles: roles || [],
                 lastAccess: new Date(),
             },
         });

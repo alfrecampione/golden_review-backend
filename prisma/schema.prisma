@@ -29,6 +29,7 @@ model User {
   fullName    String?
   department  String?
   position    String?
+  roles       String[]  @default([])
   lastAccess  DateTime?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt

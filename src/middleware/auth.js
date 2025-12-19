@@ -60,3 +60,16 @@ export const optionalAuth = async (request, reply) => {
         // Don't fail on optional middleware
     }
 };
+
+// Middleware to verify Golden Audit role
+export const requireGoldenAudit = async (request, reply) => {
+    const roles = request.user?.roles || [];
+
+    if (!roles.includes('GoldenAuditUser')) {
+        return reply.code(403).send({
+            success: false,
+            error: 'Access denied',
+            message: 'GoldenAuditUser role required'
+        });
+    }
+};
