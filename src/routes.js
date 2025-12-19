@@ -37,7 +37,8 @@ async function routes(fastify, options) {
     fastify.delete('/user/:id', { preHandler: requireAuth }, UserController.deleteUser);
 
     // Policies routes (protected)
-    fastify.get('/policies', { preHandler: requireAuth }, PoliciesController.getPolicies);
+    fastify.get('/policies/new-business', { preHandler: requireAuth }, PoliciesController.getNewBusiness);
+    fastify.get('/policies/renewals', { preHandler: requireAuth }, PoliciesController.getRenewals);
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
