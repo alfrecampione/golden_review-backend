@@ -5,6 +5,8 @@ import routes from './routes.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import pg from 'pg';
+import connectPgSimple from 'connect-pg-simple';
 
 // Load environment variables
 dotenv.config();
@@ -48,9 +50,26 @@ await fastify.register(import('@fastify/cookie'), {
     parseOptions: {}
 });
 
-// Configure sessions
+// Configure PostgreSQL session store
+const PgSession = connectPgSimple({ Store: Object });
+const pgPool = new pg.Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Required for AWS RDS
+    }
+});
+
+const sessionStore = new PgSession({
+    pool: pgPool,
+    tableName: 'session',
+    schemaName: 'goldenaudit',
+    createTableIfMissing: false // Table already exists in schema
+});
+
+// Configure sessions with persistent store
 await fastify.register(import('@fastify/session'), {
     secret: process.env.SESSION_SECRET || 'fallback-secret-key',
+    store: sessionStore, // Use PostgreSQL store instead of in-memory
     cookieName: 'sessionId',
     cookie: {
         secure: process.env.NODE_ENV === 'production', // Allow HTTP in development
