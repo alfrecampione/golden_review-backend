@@ -97,7 +97,7 @@ class PoliciesController {
 
             return {
                 success: true,
-                count: policies.length,
+                count: totalCount,
                 page: page,
                 limit: limit,
                 totalPages: totalPages,
@@ -203,7 +203,7 @@ class PoliciesController {
 
             return {
                 success: true,
-                count: policies.length,
+                count: totalCount,
                 page: page,
                 limit: limit,
                 totalPages: totalPages,
