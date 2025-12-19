@@ -14,7 +14,23 @@ class PoliciesController {
             const page = parseInt(request.query.page) || 1;
             const limit = parseInt(request.query.limit) || 25;
             const search = request.query.search || '';
+            const sortBy = request.query.sortBy || 'binder_date';
+            const sortOrder = request.query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
             const offset = (page - 1) * limit;
+
+            // Map frontend column names to database column names
+            const sortColumnMap = {
+                'policy_number': 'p.policy_number',
+                'insured_name': 'c.display_name',
+                'carrier': 'c1.display_name',
+                'effective_date': 'p.effective_date',
+                'exp_date': 'p.exp_date',
+                'premium': 'p.premium',
+                'csr': 'c2.display_name',
+                'binder_date': 'p.binder_date'
+            };
+
+            const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
 
             // Build search condition
             let searchCondition = '';
@@ -45,7 +61,7 @@ class PoliciesController {
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
             const totalPages = Math.ceil(totalCount / limit);
 
-            // Second query to get paginated results
+            // Second query to get paginated results with dynamic sorting
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -64,7 +80,7 @@ class PoliciesController {
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
                     ${searchCondition}
-                ORDER BY p.binder_date
+                ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
 
@@ -104,7 +120,23 @@ class PoliciesController {
             const page = parseInt(request.query.page) || 1;
             const limit = parseInt(request.query.limit) || 25;
             const search = request.query.search || '';
+            const sortBy = request.query.sortBy || 'binder_date';
+            const sortOrder = request.query.sortOrder?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
             const offset = (page - 1) * limit;
+
+            // Map frontend column names to database column names
+            const sortColumnMap = {
+                'policy_number': 'p.policy_number',
+                'insured_name': 'c.display_name',
+                'carrier': 'c1.display_name',
+                'effective_date': 'p.effective_date',
+                'exp_date': 'p.exp_date',
+                'premium': 'p.premium',
+                'csr': 'c2.display_name',
+                'binder_date': 'p.binder_date'
+            };
+
+            const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
 
             // Build search condition
             let searchCondition = '';
@@ -135,7 +167,7 @@ class PoliciesController {
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
             const totalPages = Math.ceil(totalCount / limit);
 
-            // Second query to get paginated results
+            // Second query to get paginated results with dynamic sorting
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -154,7 +186,7 @@ class PoliciesController {
                     AND p.business_type = 'R' 
                     AND l.location_type = 1
                     ${searchCondition}
-                ORDER BY p.binder_date
+                ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
 
