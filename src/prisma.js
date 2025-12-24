@@ -35,6 +35,10 @@ export const validateGoldenTrustEmail = (email) => {
 export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
     const { id: microsoftId, mail, displayName, givenName, surname, jobTitle, department, roles } = microsoftProfile;
 
+    if (!microsoftId) {
+        throw new Error('Missing microsoftId in profile');
+    }
+
     // Validate that email is from goldentrust.com
     if (!validateGoldenTrustEmail(mail)) {
         throw new Error('Only users with @goldentrust.com domain can access');
@@ -43,7 +47,7 @@ export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
     try {
         // Try to update existing user or create new one
         const user = await prisma.user.upsert({
-            where: { email: mail },
+            where: { microsoftId },
             update: {
                 microsoftId,
                 firstName: givenName,

@@ -1,6 +1,8 @@
-import UserController from './controllers/controllers.js';
+import UserController from './controllers/usersController.js';
 import AuthController from './controllers/authController.js';
 import PoliciesController from './controllers/policiesController.js';
+import GraphController from './controllers/graphController.js';
+import CarriersController from './controllers/carriersController.js';
 import { requireAuth, optionalAuth } from './middleware/auth.js';
 
 // Function to register all routes
@@ -30,11 +32,14 @@ async function routes(fastify, options) {
     fastify.get('/auth/me', { preHandler: requireAuth }, AuthController.getCurrentUser);
 
     // User routes (protected)
-    fastify.get('/user', { preHandler: requireAuth }, UserController.getAllUsers);
+    fastify.get('/carriers/available', { preHandler: requireAuth }, CarriersController.getAvailableCarriers);
+    fastify.get('/users', { preHandler: requireAuth }, UserController.getAllUsers);
+    fastify.get('/users/carriers', { preHandler: requireAuth }, CarriersController.getAllUserCarriers);
     fastify.get('/user/:id', { preHandler: requireAuth }, UserController.getUserById);
     fastify.post('/user', { preHandler: requireAuth }, UserController.createUser);
     fastify.put('/user/:id', { preHandler: requireAuth }, UserController.updateUser);
     fastify.delete('/user/:id', { preHandler: requireAuth }, UserController.deleteUser);
+    fastify.put('/user/:id/carriers', { preHandler: requireAuth }, CarriersController.updateUserCarriers);
 
     // Policies routes (protected)
     fastify.get('/policies/new-business', { preHandler: requireAuth }, PoliciesController.getNewBusiness);
