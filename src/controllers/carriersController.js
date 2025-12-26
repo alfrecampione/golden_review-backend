@@ -4,13 +4,14 @@ import { Prisma } from '@prisma/client';
 class CarriersController {
     static async getAvailableCarriers(request, reply) {
         try {
-            const carriers = await prisma.$queryRaw`
+            const carriersRaw = await prisma.$queryRaw`
                 SELECT entity_id AS id, display_name AS name
                 FROM qq.contacts
                 WHERE type_display = 'R' AND status = 'A'
                 ORDER BY display_name ASC
             `;
-
+            // Convertir id a string
+            const carriers = carriersRaw.map(c => ({ ...c, id: String(c.id) }));
             return { success: true, carriers };
         } catch (error) {
             request.log.error({ err: error }, 'Error fetching available carriers');
