@@ -76,11 +76,12 @@ class CarriersController {
 
             // Fetch carrier display names from external table
             const carrierRows = allCarrierIds.length
-                ? await prisma.$queryRaw`
-                    SELECT entity_id as id, display_name as name
-                    FROM qq.contacts
-                    WHERE entity_id IN (${prisma.join(allCarrierIds)})
-                `
+                ? await prisma.$queryRawUnsafe(
+                    `SELECT entity_id as id, display_name as name
+                     FROM qq.contacts
+                     WHERE entity_id IN (${allCarrierIds.map(() => '?').join(',')})`,
+                    ...allCarrierIds
+                )
                 : [];
             request.log.info({ carrierRows }, '[getAllUserCarriers] carrierRows');
 
