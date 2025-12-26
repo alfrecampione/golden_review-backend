@@ -26,6 +26,8 @@ class CarriersController {
             const sortBy = (request.query.sortBy || 'name');
             const sortOrder = request.query.sortOrder === 'desc' ? 'desc' : 'asc';
 
+            request.log.info({ page, limit, search, sortBy, sortOrder }, '[getAllUserCarriers] Query params');
+
             // Obtener todos los usuarios con rol "User"
             const usersWithRoleUser = await prisma.user.findMany({
                 where: {
@@ -43,8 +45,10 @@ class CarriersController {
                     position: true
                 }
             });
+            request.log.info({ usersWithRoleUser }, '[getAllUserCarriers] usersWithRoleUser');
 
             const userIds = usersWithRoleUser.map(u => u.id);
+            request.log.info({ userIds }, '[getAllUserCarriers] userIds');
 
             // Luego obtener los links de userCarrier solo para estos usuarios
             const links = userIds.length
@@ -57,6 +61,7 @@ class CarriersController {
                     select: { userId: true, carrierId: true }
                 })
                 : [];
+            request.log.info({ links }, '[getAllUserCarriers] userCarrier links');
 
             const byUser = new Map();
             for (const link of links) {
@@ -67,6 +72,7 @@ class CarriersController {
             }
 
             const allCarrierIds = Array.from(new Set(links.map(l => l.carrierId))); // unique ids
+            request.log.info({ allCarrierIds }, '[getAllUserCarriers] allCarrierIds');
 
             // Fetch carrier display names from external table
             const carrierRows = allCarrierIds.length
@@ -76,6 +82,7 @@ class CarriersController {
                     WHERE entity_id IN (${prisma.join(allCarrierIds)})
                 `
                 : [];
+            request.log.info({ carrierRows }, '[getAllUserCarriers] carrierRows');
 
             const carrierNameById = new Map(
                 carrierRows.map(row => [String(row.id), row.name])
@@ -101,6 +108,7 @@ class CarriersController {
                     carriers
                 };
             });
+            request.log.info({ usersMapped }, '[getAllUserCarriers] usersMapped');
 
             // Búsqueda server-side (incluye carriers)
             const filtered = search
@@ -110,6 +118,7 @@ class CarriersController {
                         .some(value => value.toLowerCase().includes(search));
                 })
                 : usersMapped;
+            request.log.info({ filtered }, '[getAllUserCarriers] filtered');
 
             const carrierString = user => user.carriers.map(c => c.carrierName || c.carrierId).join(', ');
 
@@ -139,11 +148,13 @@ class CarriersController {
                 if (valA > valB) return 1 * direction;
                 return 0;
             });
+            request.log.info({ sorted }, '[getAllUserCarriers] sorted');
 
             const total = sorted.length;
             const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
             const start = (page - 1) * limit;
             const data = sorted.slice(start, start + limit);
+            request.log.info({ total, totalPages, start, data }, '[getAllUserCarriers] pagination/data');
 
             return {
                 success: true,
@@ -154,8 +165,8 @@ class CarriersController {
                 data
             };
         } catch (error) {
-            request.log.error({ err: error }, 'Error fetching user carriers');
-            return reply.code(500).send({ success: false, error: 'Internal server error' });
+            request.log.error({ err: error, query: request.query }, '[getAllUserCarriers] Error fetching user carriers');
+            return reply.code(500).send({ success: false, error: 'Internal server error', details: error?.message });
         }
     }
 
@@ -164,7 +175,7 @@ class CarriersController {
             const { id: userId } = request.params;
             const carrierIds = request.body?.carrierIds;
 
-            request.log.info({ userId, carrierIds }, '[updateUserCarriers] Input params');
+            console.log({ userId, carrierIds }, '[updateUserCarriers] Input params');
 
             if (!userId) {
                 request.log.warn('[updateUserCarriers] Missing userId');
