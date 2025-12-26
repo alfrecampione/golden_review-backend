@@ -164,27 +164,33 @@ class CarriersController {
             const { id: userId } = request.params;
             const carrierIds = request.body?.carrierIds;
 
+            request.log.info({ userId, carrierIds }, '[updateUserCarriers] Input params');
+
             if (!userId) {
+                request.log.warn('[updateUserCarriers] Missing userId');
                 return reply.code(400).send({ success: false, error: 'userId is required' });
             }
 
             if (!Array.isArray(carrierIds)) {
+                request.log.warn({ carrierIds }, '[updateUserCarriers] carrierIds is not an array');
                 return reply.code(400).send({ success: false, error: 'carrierIds must be an array' });
             }
 
             // Convert all carrierIds to strings and filter out falsy values
             const uniqueCarrierIds = Array.from(new Set(carrierIds.filter(Boolean).map(String)));
+            request.log.info({ uniqueCarrierIds }, '[updateUserCarriers] uniqueCarrierIds after filtering');
 
             const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
             if (!user) {
+                request.log.warn({ userId }, '[updateUserCarriers] User not found');
                 return reply.code(404).send({ success: false, error: 'User not found' });
             }
-
 
             const existing = await prisma.userCarrier.findMany({
                 where: { userId },
                 select: { carrierId: true }
             });
+            request.log.info({ existing }, '[updateUserCarriers] Existing userCarrier links');
 
             // Ensure all existing carrierIds are strings for comparison
             const existingSet = new Set(existing.map(e => String(e.carrierId)));
@@ -192,15 +198,18 @@ class CarriersController {
 
             const toDelete = [...existingSet].filter(id => !incomingSet.has(id));
             const toInsert = [...incomingSet].filter(id => !existingSet.has(id));
+            request.log.info({ toDelete, toInsert }, '[updateUserCarriers] toDelete/toInsert');
 
             await prisma.$transaction(async tx => {
                 if (toDelete.length) {
+                    request.log.info({ toDelete }, '[updateUserCarriers] Deleting userCarrier links');
                     await tx.userCarrier.deleteMany({
                         where: { userId, carrierId: { in: toDelete } }
                     });
                 }
 
                 if (toInsert.length) {
+                    request.log.info({ toInsert }, '[updateUserCarriers] Creating userCarrier links');
                     await tx.userCarrier.createMany({
                         data: toInsert.map(carrierId => ({ userId, carrierId })),
                         skipDuplicates: true
@@ -208,14 +217,15 @@ class CarriersController {
                 }
             });
 
+            request.log.info('[updateUserCarriers] Update successful');
             return {
                 success: true,
                 userId,
                 carrierIds: uniqueCarrierIds
             };
         } catch (error) {
-            request.log.error({ err: error }, 'Error updating user carriers');
-            return reply.code(500).send({ success: false, error: 'Internal server error' });
+            request.log.error({ err: error, body: request.body, params: request.params }, '[updateUserCarriers] Error updating user carriers');
+            return reply.code(500).send({ success: false, error: 'Internal server error', details: error?.message });
         }
     }
 }
