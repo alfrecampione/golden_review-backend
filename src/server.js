@@ -24,7 +24,7 @@ const httpsOptions = {
 };
 
 const fastify = Fastify({
-    logger: false,
+    logger: true,
     https: httpsOptions
 });
 
