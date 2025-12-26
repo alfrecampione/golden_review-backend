@@ -172,19 +172,22 @@ class CarriersController {
                 return reply.code(400).send({ success: false, error: 'carrierIds must be an array' });
             }
 
-            const uniqueCarrierIds = Array.from(new Set(carrierIds.filter(Boolean)));
+            // Convert all carrierIds to strings and filter out falsy values
+            const uniqueCarrierIds = Array.from(new Set(carrierIds.filter(Boolean).map(String)));
 
             const user = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
             if (!user) {
                 return reply.code(404).send({ success: false, error: 'User not found' });
             }
 
+
             const existing = await prisma.userCarrier.findMany({
                 where: { userId },
                 select: { carrierId: true }
             });
 
-            const existingSet = new Set(existing.map(e => e.carrierId));
+            // Ensure all existing carrierIds are strings for comparison
+            const existingSet = new Set(existing.map(e => String(e.carrierId)));
             const incomingSet = new Set(uniqueCarrierIds);
 
             const toDelete = [...existingSet].filter(id => !incomingSet.has(id));
