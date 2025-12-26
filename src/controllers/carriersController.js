@@ -1,4 +1,5 @@
 import prisma from '../prisma.js';
+import { Prisma } from '@prisma/client';
 
 class CarriersController {
     static async getAvailableCarriers(request, reply) {
@@ -76,12 +77,11 @@ class CarriersController {
 
             // Fetch carrier display names from external table
             const carrierRows = allCarrierIds.length
-                ? await prisma.$queryRawUnsafe(
-                    `SELECT entity_id as id, display_name as name
-                     FROM qq.contacts
-                     WHERE entity_id IN (${allCarrierIds.map(() => '?').join(',')})`,
-                    ...allCarrierIds
-                )
+                ? await prisma.$queryRaw`
+                  SELECT entity_id AS id, display_name AS name
+                  FROM qq.contacts
+                  WHERE entity_id IN (${Prisma.join(allCarrierIds.map(Number))})
+                `
                 : [];
             request.log.info({ carrierRows }, '[getAllUserCarriers] carrierRows');
 
