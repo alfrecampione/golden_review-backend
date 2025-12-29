@@ -106,3 +106,29 @@ export const requireRole = (requiredRoles) => {
     return async (request, reply) => {
         try {
             const user = request.user;
+            if (!user || !Array.isArray(user.roles)) {
+                return reply.code(403).send({
+                    success: false,
+                    error: 'Forbidden',
+                    message: 'Insufficient role'
+                });
+            }
+            // Check if user has at least one of the required roles
+            const hasRole = user.roles.some(role => requiredRoles.includes(role));
+            if (!hasRole) {
+                return reply.code(403).send({
+                    success: false,
+                    error: 'Forbidden',
+                    message: `Requires one of roles: ${requiredRoles.join(', ')}`
+                });
+            }
+            // User has required role, continue
+        } catch (error) {
+            console.error('Error in requireRole middleware:', error);
+            return reply.code(500).send({
+                success: false,
+                error: 'Internal server error'
+            });
+        }
+    };
+};
