@@ -22,10 +22,11 @@ class CarriersController {
     static async getAvailableHeadCarriers(request, reply) {
         try {
             const headCarriersRaw = await prisma.$queryRaw`
-            SELECT head_carrier_id, "name" , contact_id as carries_id 
-            FROM intranet.head_carriers hc
+                SELECT head_carrier_id, "name", contact_id as carries_id
+                FROM intranet.head_carriers hc
             `;
 
+            // Map head carriers to { id, name, carriersId: string[] }
             const headCarriersMap = new Map();
             for (const row of headCarriersRaw) {
                 const headCarrierId = String(row.head_carrier_id);
@@ -33,15 +34,14 @@ class CarriersController {
                     headCarriersMap.set(headCarrierId, {
                         id: headCarrierId,
                         name: row.name,
-                        carriers: []
+                        carriersId: []
                     });
                 }
-                headCarriersMap.get(headCarrierId).carriers.push({ id: String(row.carries_id), name: null });
+                headCarriersMap.get(headCarrierId).carriersId.push(String(row.carries_id));
             }
             const headCarriers = Array.from(headCarriersMap.values());
             return { success: true, headCarriers };
-        }
-        catch (error) {
+        } catch (error) {
             request.log.error({ err: error }, 'Error fetching available head carriers');
             return reply.code(500).send({ success: false, error: 'Internal server error' });
         }
