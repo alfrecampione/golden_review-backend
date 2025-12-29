@@ -33,6 +33,7 @@ async function routes(fastify, options) {
 
     // User routes (protected)
     fastify.get('/carriers/available', { preHandler: requireAuth }, CarriersController.getAvailableCarriers);
+    fastify.get('/carriers/head-carriers', { preHandler: requireAuth }, CarriersController.getAvailableHeadCarriers);
     fastify.get('/users', { preHandler: requireAuth }, UserController.getAllUsers);
     fastify.get('/users/carriers', { preHandler: requireAuth }, CarriersController.getAllUserCarriers);
     fastify.get('/user/:id', { preHandler: requireAuth }, UserController.getUserById);
