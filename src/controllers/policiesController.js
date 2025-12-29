@@ -300,7 +300,7 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025'
                     AND l.location_type = 1
                     AND NOT EXISTS (
-                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId" = p.carrier_id
+                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
                     )
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
