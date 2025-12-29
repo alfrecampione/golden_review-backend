@@ -37,7 +37,7 @@ class CarriersController {
                         carriersId: []
                     });
                 }
-                headCarriersMap.get(headCarrierId).carriersId.push(String(row.carries_id));
+               headCarriersMap.get(headCarrierId).carriersId.push(...String(row.carries_id).split(',').map(id => id.trim()));
             }
             const headCarriers = Array.from(headCarriersMap.values());
 
