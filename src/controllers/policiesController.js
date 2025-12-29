@@ -261,6 +261,7 @@ class PoliciesController {
                 )`;
             }
 
+
             // First query to count total records
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
@@ -272,13 +273,14 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025'
                     AND l.location_type = 1
                     AND NOT EXISTS (
-                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc.carrier_id = p.carrier_id
+                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
                     )
                     ${searchCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
             const totalPages = Math.ceil(totalCount / limit);
+
 
             // Second query to get paginated results with dynamic sorting
             const policies = await prisma.$queryRawUnsafe(`
@@ -298,7 +300,7 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025'
                     AND l.location_type = 1
                     AND NOT EXISTS (
-                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc.carrier_id = p.carrier_id
+                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId" = p.carrier_id
                     )
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
