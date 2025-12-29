@@ -113,10 +113,7 @@ async function syncGoldenAuditUsersOnce() {
                 }
             }
         });
-        console.log(`🗑️  Deleted ${deleteCount.count} users not found in Microsoft`);
     }
-
-    console.log(`✅ GoldenAudit users sync completed (${usersById.size} users synced, ${usersToDelete.length} users deleted)`);
 }
 
 let jobStarted = false;
@@ -133,7 +130,6 @@ export function startUserSyncJob() {
     syncGoldenAuditUsersOnce().catch(err => console.error('Initial sync failed:', err));
 
     jobStarted = true;
-    console.log('🕒 GoldenAudit user sync job scheduled (every 6 hours)');
 }
 
 export { syncGoldenAuditUsersOnce };
