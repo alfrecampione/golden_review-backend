@@ -1,3 +1,43 @@
+// Middleware to require a minimum role based on hierarchy: Admin > Manager > User
+export const requireMinimumRole = (minRole) => {
+    // Define role hierarchy
+    const roleOrder = ['User', 'Manager', 'Admin'];
+    return async (request, reply) => {
+        try {
+            const user = request.user;
+            if (!user || !Array.isArray(user.roles)) {
+                return reply.code(403).send({
+                    success: false,
+                    error: 'Forbidden',
+                    message: 'Insufficient role'
+                });
+            }
+
+            // Find the highest role the user has
+            let userMaxRoleIndex = -1;
+            for (const role of user.roles) {
+                const idx = roleOrder.indexOf(role);
+                if (idx > userMaxRoleIndex) userMaxRoleIndex = idx;
+            }
+
+            const minRoleIndex = roleOrder.indexOf(minRole);
+            if (userMaxRoleIndex < minRoleIndex) {
+                return reply.code(403).send({
+                    success: false,
+                    error: 'Forbidden',
+                    message: `Requires at least role: ${minRole}`
+                });
+            }
+            // User has sufficient role, continue
+        } catch (error) {
+            console.error('Error in requireMinimumRole middleware:', error);
+            return reply.code(500).send({
+                success: false,
+                error: 'Internal server error'
+            });
+        }
+    };
+};
 import prisma from '../prisma.js';
 
 // Middleware to protect routes that require authentication
@@ -61,15 +101,8 @@ export const optionalAuth = async (request, reply) => {
     }
 };
 
-// Middleware to verify Golden Audit role
-export const requireGoldenAudit = async (request, reply) => {
-    const roles = request.user?.roles || [];
-
-    if (!roles.includes('GoldenAuditUser')) {
-        return reply.code(403).send({
-            success: false,
-            error: 'Access denied',
-            message: 'GoldenAuditUser role required'
-        });
-    }
-};
+// Middleware to verify roles
+export const requireRole = (requiredRoles) => {
+    return async (request, reply) => {
+        try {
+            const user = request.user;

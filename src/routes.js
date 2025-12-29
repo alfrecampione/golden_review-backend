@@ -3,7 +3,7 @@ import AuthController from './controllers/authController.js';
 import PoliciesController from './controllers/policiesController.js';
 import GraphController from './controllers/graphController.js';
 import CarriersController from './controllers/carriersController.js';
-import { requireAuth, optionalAuth } from './middleware/auth.js';
+import { requireAuth, optionalAuth, requireMinimumRole } from './middleware/auth.js';
 
 // Function to register all routes
 async function routes(fastify, options) {
@@ -28,24 +28,25 @@ async function routes(fastify, options) {
 
     // ========== PROTECTED ROUTES (Require authentication) ==========
 
+
     // Get current user information
-    fastify.get('/auth/me', { preHandler: requireAuth }, AuthController.getCurrentUser);
+    fastify.get('/auth/me', { preHandler: [requireAuth, requireMinimumRole('User')] }, AuthController.getCurrentUser);
 
     // User routes (protected)
-    fastify.get('/carriers/available', { preHandler: requireAuth }, CarriersController.getAvailableCarriers);
-    fastify.get('/carriers/head-carriers', { preHandler: requireAuth }, CarriersController.getAvailableHeadCarriers);
-    fastify.get('/users', { preHandler: requireAuth }, UserController.getAllUsers);
-    fastify.get('/users/carriers', { preHandler: requireAuth }, CarriersController.getAllUserCarriers);
-    fastify.get('/user/:id', { preHandler: requireAuth }, UserController.getUserById);
-    fastify.post('/user', { preHandler: requireAuth }, UserController.createUser);
-    fastify.put('/user/:id', { preHandler: requireAuth }, UserController.updateUser);
-    fastify.delete('/user/:id', { preHandler: requireAuth }, UserController.deleteUser);
-    fastify.put('/user/:id/carriers', { preHandler: requireAuth }, CarriersController.updateUserCarriers);
+    fastify.get('/carriers/available', { preHandler: [requireAuth, requireMinimumRole('User')] }, CarriersController.getAvailableCarriers);
+    fastify.get('/carriers/head-carriers', { preHandler: [requireAuth, requireMinimumRole('User')] }, CarriersController.getAvailableHeadCarriers);
+    fastify.get('/users', { preHandler: [requireAuth, requireMinimumRole('User')] }, UserController.getAllUsers);
+    fastify.get('/users/carriers', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, CarriersController.getAllUserCarriers);
+    fastify.get('/user/:id', { preHandler: [requireAuth, requireMinimumRole('User')] }, UserController.getUserById);
+    fastify.post('/user', { preHandler: [requireAuth, requireMinimumRole('User')] }, UserController.createUser);
+    fastify.put('/user/:id', { preHandler: [requireAuth, requireMinimumRole('User')] }, UserController.updateUser);
+    fastify.delete('/user/:id', { preHandler: [requireAuth, requireMinimumRole('User')] }, UserController.deleteUser);
+    fastify.put('/user/:id/carriers', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, CarriersController.updateUserCarriers);
 
     // Policies routes (protected)
-    fastify.get('/policies/new-business', { preHandler: requireAuth }, PoliciesController.getNewBusiness);
-    fastify.get('/policies/renewals', { preHandler: requireAuth }, PoliciesController.getRenewals);
-    fastify.get('/policies/unassigned', { preHandler: requireAuth }, PoliciesController.getUnassignedPolicies);
+    fastify.get('/policies/new-business', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getNewBusiness);
+    fastify.get('/policies/renewals', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getRenewals);
+    fastify.get('/policies/unassigned', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.getUnassignedPolicies);
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
