@@ -45,6 +45,7 @@ async function routes(fastify, options) {
     // Policies routes (protected)
     fastify.get('/policies/new-business', { preHandler: requireAuth }, PoliciesController.getNewBusiness);
     fastify.get('/policies/renewals', { preHandler: requireAuth }, PoliciesController.getRenewals);
+    fastify.get('/policies/unassigned', { preHandler: requireAuth }, PoliciesController.getUnassignedPolicies);
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
