@@ -40,6 +40,9 @@ class CarriersController {
                 headCarriersMap.get(headCarrierId).carriersId.push(String(row.carries_id));
             }
             const headCarriers = Array.from(headCarriersMap.values());
+
+            console.log('Fetched head carriers:', headCarriers);
+
             return { success: true, headCarriers };
         } catch (error) {
             request.log.error({ err: error }, 'Error fetching available head carriers');
