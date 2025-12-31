@@ -44,7 +44,8 @@ class PoliciesController {
                 )`;
             }
 
-            // First query to count total records
+
+            // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
                 FROM qq.policies p
@@ -55,13 +56,14 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
+                    AND p.lob_id = 6
                     ${searchCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
             const totalPages = Math.ceil(totalCount / limit);
 
-            // Second query to get paginated results with dynamic sorting
+            // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -79,6 +81,7 @@ class PoliciesController {
                 WHERE p.binder_date >= '12/01/2025' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
+                    AND p.lob_id = 6
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
@@ -150,7 +153,7 @@ class PoliciesController {
                 )`;
             }
 
-            // First query to count total records
+            // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
                 FROM qq.policies p
@@ -164,13 +167,14 @@ class PoliciesController {
                     AND l.location_type = 1
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
+                    AND p.lob_id = 6
                     ${searchCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
             const totalPages = Math.ceil(totalCount / limit);
 
-            // Second query to get paginated results with dynamic sorting
+            // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -191,6 +195,7 @@ class PoliciesController {
                     AND l.location_type = 1
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
+                    AND p.lob_id = 6
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
@@ -262,7 +267,7 @@ class PoliciesController {
             }
 
 
-            // First query to count total records
+            // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
                 FROM qq.policies p
@@ -272,6 +277,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 WHERE p.binder_date >= '12/01/2025'
                     AND l.location_type = 1
+                    AND p.lob_id = 6
                     AND NOT EXISTS (
                         SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
                     )
@@ -282,7 +288,7 @@ class PoliciesController {
             const totalPages = Math.ceil(totalCount / limit);
 
 
-            // Second query to get paginated results with dynamic sorting
+            // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
                     p.policy_number, 
@@ -299,6 +305,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 WHERE p.binder_date >= '12/01/2025'
                     AND l.location_type = 1
+                    AND p.lob_id = 6
                     AND NOT EXISTS (
                         SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
                     )
