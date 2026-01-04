@@ -53,7 +53,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '12/01/2025' 
+                WHERE p.binder_date >= '01/01/2026' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
                     AND p.lob_id = 6
@@ -78,7 +78,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '12/01/2025' 
+                WHERE p.binder_date >= '01/01/2026' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
                     AND p.lob_id = 6
@@ -162,7 +162,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
-                WHERE p.created_on >= '12/01/2025' 
+                WHERE p.created_on >= '01/01/2026' 
                     AND p.business_type = 'R' 
                     AND l.location_type = 1
                     AND p.policy_status IN ('A', 'C')
@@ -190,7 +190,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
-                WHERE p.created_on >= '12/01/2025' 
+                WHERE p.created_on >= '01/01/2026' 
                     AND p.business_type = 'R' 
                     AND l.location_type = 1
                     AND p.policy_status IN ('A', 'C')
@@ -275,7 +275,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '12/01/2025'
+                WHERE p.binder_date >= '01/01/2026'
                     AND l.location_type = 1
                     AND p.lob_id = 6
                     AND NOT EXISTS (
@@ -303,7 +303,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '12/01/2025'
+                WHERE p.binder_date >= '01/01/2026'
                     AND l.location_type = 1
                     AND p.lob_id = 6
                     AND NOT EXISTS (
