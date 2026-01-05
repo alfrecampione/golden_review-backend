@@ -33,7 +33,7 @@ export const validateGoldenTrustEmail = (email) => {
 
 // Function to create or update user from Microsoft
 export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
-    const { id: microsoftId, mail, displayName, givenName, surname, jobTitle, department, roles } = microsoftProfile;
+    const { microsoftId, mail, displayName, givenName, surname, jobTitle, department, roles } = microsoftProfile;
 
     if (!microsoftId) {
         throw new Error('Missing microsoftId in profile');

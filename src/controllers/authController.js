@@ -25,7 +25,7 @@ class AuthController {
             // Crear o actualizar usuario en la base de datos
             // Pass roles from Azure AD to be stored in the database
             const dbUser = await createOrUpdateMicrosoftUser({
-                id: user.microsoftId,
+                microsoftId: user.microsoftId,
                 displayName: user.name || `${user.firstName} ${user.lastName}`,
                 mail: user.email,
                 givenName: user.firstName,
@@ -68,7 +68,7 @@ class AuthController {
             request.session.authenticated = true;
 
             // Fetch Microsoft avatar path if available
-            const photoUrl = await getMSAPhotoPath(dbUser.id);
+            const photoUrl = await getMSAPhotoPath(dbUser.microsoftId);
 
             return {
                 success: true,
