@@ -7,6 +7,7 @@ class PoliciesController {
      * Get all policies with detailed information
      * Query joins policies with contacts and locations tables
      * Supports pagination and search
+     * Filters by user carriers if user role is "User"
      */
     static async getNewBusiness(request, reply) {
         try {
@@ -44,6 +45,17 @@ class PoliciesController {
                 )`;
             }
 
+            // Check if user has "User" role
+            const isUserRole = request.user?.roles?.includes('User');
+            const userId = request.user?.id;
+
+            // Build join and where clause for user carrier filtering
+            let userCarrierJoin = '';
+            let userCarrierCondition = '';
+            if (isUserRole && userId) {
+                userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
+                userCarrierCondition = `AND uc.user_id = '${userId}'`;
+            }
 
             // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
@@ -53,11 +65,13 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                ${userCarrierJoin}
                 WHERE p.binder_date >= '01/01/2026' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
                     AND p.lob_id = 6
                     ${searchCondition}
+                    ${userCarrierCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
@@ -78,11 +92,13 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                ${userCarrierJoin}
                 WHERE p.binder_date >= '01/01/2026' 
                     AND p.business_type = 'N' 
                     AND l.location_type = 1
                     AND p.lob_id = 6
                     ${searchCondition}
+                    ${userCarrierCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
@@ -153,6 +169,18 @@ class PoliciesController {
                 )`;
             }
 
+            // Check if user has "User" role
+            const isUserRole = request.user?.roles?.includes('User');
+            const userId = request.user?.id;
+
+            // Build join and where clause for user carrier filtering
+            let userCarrierJoin = '';
+            let userCarrierCondition = '';
+            if (isUserRole && userId) {
+                userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
+                userCarrierCondition = `AND uc.user_id = '${userId}'`;
+            }
+
             // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
@@ -162,6 +190,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                ${userCarrierJoin}
                 WHERE p.created_on >= '01/01/2026' 
                     AND p.business_type = 'R' 
                     AND l.location_type = 1
@@ -169,6 +198,7 @@ class PoliciesController {
                     AND p.carrier_id <> p1.carrier_id
                     AND p.lob_id = 6
                     ${searchCondition}
+                    ${userCarrierCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
@@ -190,6 +220,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                ${userCarrierJoin}
                 WHERE p.created_on >= '01/01/2026' 
                     AND p.business_type = 'R' 
                     AND l.location_type = 1
@@ -197,6 +228,7 @@ class PoliciesController {
                     AND p.carrier_id <> p1.carrier_id
                     AND p.lob_id = 6
                     ${searchCondition}
+                    ${userCarrierCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
