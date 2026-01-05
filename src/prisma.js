@@ -59,7 +59,6 @@ export const createOrUpdateMicrosoftUser = async (microsoftProfile) => {
                 lastAccess: new Date(),
             },
             create: {
-                id: microsoftId,
                 microsoftId,
                 email: mail,
                 firstName: givenName,
