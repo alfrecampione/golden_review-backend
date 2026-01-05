@@ -54,7 +54,7 @@ class PoliciesController {
             let userCarrierCondition = '';
             if (isUserRole && userId) {
                 userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
-                userCarrierCondition = `AND uc.user_id = '${userId}'`;
+                userCarrierCondition = `AND uc."userId" = '${userId}'`;
             }
 
             // First query to count total records (solo personal auto: lob_id = 6)
@@ -178,7 +178,7 @@ class PoliciesController {
             let userCarrierCondition = '';
             if (isUserRole && userId) {
                 userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
-                userCarrierCondition = `AND uc.user_id = '${userId}'`;
+                userCarrierCondition = `AND uc."userId" = '${userId}'`;
             }
 
             // First query to count total records (solo personal auto: lob_id = 6)
