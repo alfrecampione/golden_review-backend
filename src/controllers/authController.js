@@ -118,7 +118,7 @@ class AuthController {
                     valid: false
                 };
             }
-            const photoUrl = await getMSAPhotoPath(user.id);
+            const photoUrl = await getMSAPhotoPath(user.microsoftId);
             return {
                 success: true,
                 valid: true,
@@ -186,7 +186,7 @@ class AuthController {
             // Si llegamos aquí, el usuario está autenticado
             const user = request.user;
 
-            const photoUrl = await getMSAPhotoPath(user.id);
+            const photoUrl = await getMSAPhotoPath(user.microsoftId);
             return {
                 success: true,
                 user: {

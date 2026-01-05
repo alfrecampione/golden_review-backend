@@ -83,7 +83,16 @@ async function syncGoldenAuditUsersOnce() {
             }
 
             const rolesArray = Array.from(data.roles);
-            await createOrUpdateMicrosoftUser({ ...profile, roles: rolesArray });
+            await createOrUpdateMicrosoftUser({
+                microsoftId: profile.id,
+                displayName: profile.displayName,
+                mail: profile.mail,
+                givenName: profile.givenName,
+                surname: profile.surname,
+                jobTitle: profile.jobTitle,
+                department: profile.department,
+                roles: rolesArray
+            });
             syncedMicrosoftIds.add(profile.id);
         } catch (error) {
             console.error(`Error syncing user ${principalId}:`, error.message);
