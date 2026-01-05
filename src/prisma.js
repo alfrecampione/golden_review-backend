@@ -24,11 +24,12 @@ prisma.$connect()
         console.error('❌ Failed to connect to database:', error.message);
     });
 
-// Function to validate goldentrust.com email
+// Function to validate goldentrust.com or goldentrust.org email
 export const validateGoldenTrustEmail = (email) => {
-    const allowedDomain = '@goldentrust.com';
+    const allowedDomains = ['@goldentrust.com', '@goldentrust.org'];
+    const lowerEmail = email?.toLowerCase() || '';
 
-    return email && email.toLowerCase().endsWith(allowedDomain.toLowerCase());
+    return allowedDomains.some(domain => lowerEmail.endsWith(domain));
 };
 
 // Function to create or update user from Microsoft
