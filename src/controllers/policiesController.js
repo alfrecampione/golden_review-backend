@@ -80,6 +80,7 @@ class PoliciesController {
             // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
+                    p.policy_id,
                     p.policy_number, 
                     c.display_name as insured_name, 
                     p.effective_date, 
@@ -105,6 +106,7 @@ class PoliciesController {
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
+                policy_id: policy.policy_id,
                 policy_number: policy.policy_number,
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
@@ -207,6 +209,7 @@ class PoliciesController {
             // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
+                    p.policy_id,
                     p.policy_number, 
                     c.display_name as insured_name, 
                     p.effective_date, 
@@ -235,6 +238,7 @@ class PoliciesController {
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
+                policy_id: policy.policy_id,
                 policy_number: policy.policy_number,
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
@@ -323,6 +327,7 @@ class PoliciesController {
             // Second query to get paginated results with dynamic sorting (solo personal auto: lob_id = 6)
             const policies = await prisma.$queryRawUnsafe(`
                 SELECT 
+                    p.policy_id,
                     p.policy_number, 
                     c.display_name as insured_name, 
                     p.effective_date, 
@@ -348,6 +353,7 @@ class PoliciesController {
 
             // Convert BigInt values to strings for JSON serialization
             const serializedPolicies = policies.map(policy => ({
+                policy_id: policy.policy_id,
                 policy_number: policy.policy_number,
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
