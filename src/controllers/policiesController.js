@@ -384,8 +384,6 @@ class PoliciesController {
             const policyId = request.params.policyId;
             const { userId } = request.body;
 
-            console.log('Assigning policy:', policyId, 'to user:', userId);
-
             // Validate inputs
             if (!policyId || !userId) {
                 return reply.code(400).send({
@@ -399,8 +397,6 @@ class PoliciesController {
                     policyId: policyId
                 }
             });
-
-            console.log('Policy exists:', policyExists);
 
             // Upsert user policy assignment
             await prisma.userPolicy.upsert({
@@ -421,8 +417,6 @@ class PoliciesController {
                     policyId: policyId
                 }
             });
-
-            console.log('Updated assignment:', updatedAssignment);
 
             return {
                 success: true,
