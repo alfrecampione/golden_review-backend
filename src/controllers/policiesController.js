@@ -28,7 +28,8 @@ class PoliciesController {
                 'exp_date': 'p.exp_date',
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
-                'binder_date': 'p.binder_date'
+                'binder_date': 'p.binder_date',
+                'assigned_user_name': 'u.full_name'
             };
 
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
@@ -64,6 +65,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'N' 
                     ${searchCondition}
                     ${userPolicyCondition}
@@ -82,13 +84,16 @@ class PoliciesController {
                     p.exp_date, 
                     c1.display_name as carrier, 
                     p.premium, 
-                    c2.display_name as csr
+                    c2.display_name as csr,
+                    u.id as assigned_user_id,
+                    u.full_name as assigned_user_name,
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'N' 
                     ${searchCondition}
                     ${userPolicyCondition}
@@ -105,7 +110,9 @@ class PoliciesController {
                 exp_date: policy.exp_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
-                csr: policy.csr
+                csr: policy.csr,
+                assigned_user_id: policy.assigned_user_id || null,
+                assigned_user_name: policy.assigned_user_name || null
             }));
 
             return {
@@ -146,7 +153,8 @@ class PoliciesController {
                 'exp_date': 'p.exp_date',
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
-                'binder_date': 'p.binder_date'
+                'binder_date': 'p.binder_date',
+                'assigned_user_name': 'u.full_name'
             };
 
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
@@ -183,6 +191,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'R' 
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
@@ -203,7 +212,9 @@ class PoliciesController {
                     p.exp_date, 
                     c1.display_name as carrier, 
                     p.premium, 
-                    c2.display_name as csr
+                    c2.display_name as csr,
+                    u.id as assigned_user_id,
+                    u.full_name as assigned_user_name
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
@@ -211,6 +222,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'R' 
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
@@ -229,7 +241,9 @@ class PoliciesController {
                 exp_date: policy.exp_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
-                csr: policy.csr
+                csr: policy.csr,
+                assigned_user_id: policy.assigned_user_id || null,
+                assigned_user_name: policy.assigned_user_name || null,
             }));
 
             return {
@@ -270,7 +284,8 @@ class PoliciesController {
                 'exp_date': 'p.exp_date',
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
-                'binder_date': 'p.binder_date'
+                'binder_date': 'p.binder_date',
+                'assigned_user_name': 'u.full_name'
             };
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
 
@@ -296,6 +311,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE up."userId" IS NULL
                     ${searchCondition}
             `);
@@ -314,13 +330,16 @@ class PoliciesController {
                     p.exp_date, 
                     c1.display_name as carrier, 
                     p.premium, 
-                    c2.display_name as csr
+                    c2.display_name as csr,
+                    u.id as assigned_user_id,
+                    u.full_name as assigned_user_name
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE up."userId" IS NULL
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
@@ -336,7 +355,9 @@ class PoliciesController {
                 exp_date: policy.exp_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
-                csr: policy.csr
+                csr: policy.csr,
+                assigned_user_id: policy.assigned_user_id || null,
+                assigned_user_name: policy.assigned_user_name || null
             }));
 
             return {
