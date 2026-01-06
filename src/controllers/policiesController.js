@@ -385,18 +385,12 @@ class PoliciesController {
             const { userId } = request.body;
 
             // Validate inputs
-            if (!policyId || !userId) {
+            if (!policyId || userId === undefined) {
                 return reply.code(400).send({
                     success: false,
-                    error: 'Policy ID and User ID are required'
+                    error: 'Policy ID is required and User ID must be provided (can be null to unassign)'
                 });
             }
-
-            const policyExists = await prisma.userPolicy.findUnique({
-                where: {
-                    policyId: policyId
-                }
-            });
 
             // Upsert user policy assignment
             await prisma.userPolicy.upsert({
@@ -412,15 +406,9 @@ class PoliciesController {
                 }
             });
 
-            const updatedAssignment = await prisma.userPolicy.findUnique({
-                where: {
-                    policyId: policyId
-                }
-            });
-
             return {
                 success: true,
-                message: 'Policy assigned successfully'
+                message: userId ? 'Policy assigned successfully' : 'Policy unassigned successfully'
             };
 
         } catch (error) {
