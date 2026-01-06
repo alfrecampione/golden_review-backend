@@ -363,6 +363,8 @@ class PoliciesController {
             const policyId = request.params.policyId;
             const { userId } = request.body;
 
+            console.log('Assigning policy:', policyId, 'to user:', userId);
+
             // Validate inputs
             if (!policyId || !userId) {
                 return reply.code(400).send({
@@ -370,6 +372,14 @@ class PoliciesController {
                     error: 'Policy ID and User ID are required'
                 });
             }
+
+            const policyExists = await prisma.policies.findUnique({
+                where: {
+                    policy_id: policyId
+                }
+            });
+
+            console.log('Policy exists:', policyExists);
 
             // Upsert user policy assignment
             await prisma.userPolicy.upsert({
@@ -384,7 +394,15 @@ class PoliciesController {
                     userId: userId
                 }
             });
-            
+
+            const updatedAssignment = await prisma.userPolicy.findUnique({
+                where: {
+                    policyId: policyId
+                }
+            });
+
+            console.log('Updated assignment:', updatedAssignment);
+
             return {
                 success: true,
                 message: 'Policy assigned successfully'
