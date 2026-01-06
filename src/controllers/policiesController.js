@@ -67,6 +67,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'N' 
+                    AND up."userId" IS NOT NULL
                     ${searchCondition}
                     ${userPolicyCondition}
             `);
@@ -95,6 +96,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'N' 
+                    AND up."userId" IS NOT NULL
                     ${searchCondition}
                     ${userPolicyCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
@@ -193,6 +195,7 @@ class PoliciesController {
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'R' 
+                    AND up."userId" IS NOT NULL
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
                     ${searchCondition}
@@ -224,6 +227,7 @@ class PoliciesController {
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE p.business_type = 'R' 
+                    AND up."userId" IS NOT NULL
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
                     ${searchCondition}
