@@ -10,8 +10,9 @@ async function syncPoliciesOnce() {
 
     // 1) Fetch policies created after last sync (or all if none)
     const since = lastLog?.createdAt;
+
     const policies = await prisma.$queryRaw`
-        SELECT p.policy_id, p.carrier_id
+        SELECT p.policy_id, p.carrier_id, p.created_on
         FROM qq.policies p
         INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
         INNER JOIN qq.locations l ON l.location_id = c.location_id
@@ -19,7 +20,7 @@ async function syncPoliciesOnce() {
           AND p.binder_date >= '01/01/2026'
           AND p.lob_id = 6
           AND l.location_type = 1
-          ${since ? Prisma.sql`AND p.created_on > ${since}` : Prisma.empty}
+          ${since ? Prisma.sql`AND p.created_on > (${since} AT TIME ZONE 'UTC')` : Prisma.empty}
     `;
 
     if (!policies || policies.length === 0) {
