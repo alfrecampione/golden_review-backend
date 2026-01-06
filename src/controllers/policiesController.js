@@ -29,7 +29,7 @@ class PoliciesController {
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
                 'binder_date': 'p.binder_date',
-                'assigned_user_name': 'u.full_name'
+                'assigned_user_name': 'u.fullName'
             };
 
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
@@ -86,7 +86,7 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u.full_name as assigned_user_name
+                    u.fullName as assigned_user_name
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
@@ -154,7 +154,7 @@ class PoliciesController {
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
                 'binder_date': 'p.binder_date',
-                'assigned_user_name': 'u.full_name'
+                'assigned_user_name': 'u.fullName'
             };
 
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
@@ -214,7 +214,7 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u.full_name as assigned_user_name
+                    u.fullName as assigned_user_name
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
@@ -285,7 +285,7 @@ class PoliciesController {
                 'premium': 'p.premium',
                 'csr': 'c2.display_name',
                 'binder_date': 'p.binder_date',
-                'assigned_user_name': 'u.full_name'
+                'assigned_user_name': 'u.fullName'
             };
             const sortColumn = sortColumnMap[sortBy] || 'p.binder_date';
 
@@ -332,7 +332,7 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u.full_name as assigned_user_name
+                    u.fullName as assigned_user_name
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
