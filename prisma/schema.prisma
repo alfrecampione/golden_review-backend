@@ -34,6 +34,7 @@ model User {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   userCarriers UserCarrier[]
+  userPolicies UserPolicy[]
 
   @@map("user")
   @@schema("goldenaudit")
@@ -52,6 +53,19 @@ model UserCarrier {
   @@schema("goldenaudit")
 }
 
+model UserPolicy {
+  id        String   @id @default(uuid())
+  userId    String?
+  policyId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, policyId], map: "user_policy_user_id_policy_id_key")
+  @@map("user_policy")
+  @@schema("goldenaudit")
+}
+
 // Authentication logs table
 model AuthLog {
   id            String   @id @default(uuid())
@@ -65,5 +79,15 @@ model AuthLog {
   @@index([email])
   @@index([createdAt])
   @@map("auth_log")
+  @@schema("goldenaudit")
+}
+
+model UpdatePolicyJobLog {
+  id        String   @id @default(uuid())
+  policyIds Json     @db.Json
+  count     Int
+  createdAt DateTime @default(now())
+
+  @@map("update_policy_job_log")
   @@schema("goldenaudit")
 }

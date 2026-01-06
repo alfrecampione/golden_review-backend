@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 import pg from 'pg';
 import connectPgSimple from 'connect-pg-simple';
 import { startUserSyncJob } from './jobs/syncUsersJob.js';
+import { startPoliciesSyncJob } from './jobs/syncPoliciesJob.js';
 
 // Load environment variables
 dotenv.config();
@@ -98,6 +99,7 @@ fastify.register(routes);
 
 // Schedule background jobs
 startUserSyncJob();
+startPoliciesSyncJob();
 
 // Function to start the server
 const start = async () => {

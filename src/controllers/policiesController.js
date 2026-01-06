@@ -49,29 +49,24 @@ class PoliciesController {
             const isUserRole = request.user?.roles?.includes('User');
             const userId = request.user?.id;
 
-            // Build join and where clause for user carrier filtering
-            let userCarrierJoin = '';
-            let userCarrierCondition = '';
+            // Base from user_policy (already filtered by date/location in sync job)
+            let userPolicyCondition = '';
             if (isUserRole && userId) {
-                userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
-                userCarrierCondition = `AND uc."userId" = '${userId}'`;
+                userPolicyCondition = `AND up."userId" = '${userId}'`;
             }
 
             // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                ${userCarrierJoin}
-                WHERE p.binder_date >= '01/01/2026' 
-                    AND p.business_type = 'N' 
-                    AND l.location_type = 1
-                    AND p.lob_id = 6
+                WHERE p.business_type = 'N' 
                     ${searchCondition}
-                    ${userCarrierCondition}
+                    ${userPolicyCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
@@ -88,18 +83,15 @@ class PoliciesController {
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                ${userCarrierJoin}
-                WHERE p.binder_date >= '01/01/2026' 
-                    AND p.business_type = 'N' 
-                    AND l.location_type = 1
-                    AND p.lob_id = 6
+                WHERE p.business_type = 'N' 
                     ${searchCondition}
-                    ${userCarrierCondition}
+                    ${userPolicyCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
@@ -175,32 +167,27 @@ class PoliciesController {
             const isUserRole = request.user?.roles?.includes('User');
             const userId = request.user?.id;
 
-            // Build join and where clause for user carrier filtering
-            let userCarrierJoin = '';
-            let userCarrierCondition = '';
+            // Base from user_policy (already filtered by date/location in sync job)
+            let userPolicyCondition = '';
             if (isUserRole && userId) {
-                userCarrierJoin = `INNER JOIN goldenaudit.user_carrier uc ON uc."carrierId"::integer = p.carrier_id`;
-                userCarrierCondition = `AND uc."userId" = '${userId}'`;
+                userPolicyCondition = `AND up."userId" = '${userId}'`;
             }
 
             // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
-                ${userCarrierJoin}
-                WHERE p.created_on >= '01/01/2026' 
-                    AND p.business_type = 'R' 
-                    AND l.location_type = 1
+                WHERE p.business_type = 'R' 
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
-                    AND p.lob_id = 6
                     ${searchCondition}
-                    ${userCarrierCondition}
+                    ${userPolicyCondition}
             `);
 
             const totalCount = countResult.length > 0 ? Number(countResult[0].total_count) : 0;
@@ -217,21 +204,18 @@ class PoliciesController {
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
-                ${userCarrierJoin}
-                WHERE p.created_on >= '01/01/2026' 
-                    AND p.business_type = 'R' 
-                    AND l.location_type = 1
+                WHERE p.business_type = 'R' 
                     AND p.policy_status IN ('A', 'C')
                     AND p.carrier_id <> p1.carrier_id
-                    AND p.lob_id = 6
                     ${searchCondition}
-                    ${userCarrierCondition}
+                    ${userPolicyCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
             `);
@@ -306,17 +290,13 @@ class PoliciesController {
             // First query to count total records (solo personal auto: lob_id = 6)
             const countResult = await prisma.$queryRawUnsafe(`
                 SELECT COUNT(*) as total_count
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '01/01/2026'
-                    AND l.location_type = 1
-                    AND p.lob_id = 6
-                    AND NOT EXISTS (
-                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
-                    )
+                WHERE up."userId" IS NULL
                     ${searchCondition}
             `);
 
@@ -335,17 +315,13 @@ class PoliciesController {
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr
-                FROM qq.policies p
+                FROM goldenaudit.user_policy up
+                INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
-                WHERE p.binder_date >= '01/01/2026'
-                    AND l.location_type = 1
-                    AND p.lob_id = 6
-                    AND NOT EXISTS (
-                        SELECT 1 FROM goldenaudit.user_carrier uc WHERE uc."carrierId"::integer = p.carrier_id
-                    )
+                WHERE up."userId" IS NULL
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
@@ -377,6 +353,43 @@ class PoliciesController {
             return reply.code(500).send({
                 success: false,
                 error: 'Error fetching unassigned policies',
+                message: error.message
+            });
+        }
+    }
+
+    static async assignPolicy(request, reply) {
+        try {
+            const policyId = request.params.policyId;
+            const { userId } = request.body;
+
+            // Validate inputs
+            if (!policyId || !userId) {
+                return reply.code(400).send({
+                    success: false,
+                    error: 'Policy ID and User ID are required'
+                });
+            }
+
+            // Upsert user policy assignment
+            await prisma.userPolicy.upsert({
+                where: {
+                    policyId: policyId
+                },
+                update: {
+                    userId: userId
+                },
+                create: {
+                    policyId: policyId,
+                    userId: userId
+                }
+            });
+
+        } catch (error) {
+            console.error('Error assigning policy:', error);
+            return reply.code(500).send({
+                success: false,
+                error: 'Error assigning policy',
                 message: error.message
             });
         }
