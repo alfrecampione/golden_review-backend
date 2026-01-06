@@ -373,9 +373,9 @@ class PoliciesController {
                 });
             }
 
-            const policyExists = await prisma.policies.findUnique({
+            const policyExists = await prisma.userPolicy.findUnique({
                 where: {
-                    policy_id: policyId
+                    policyId: policyId
                 }
             });
 
