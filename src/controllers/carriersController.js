@@ -1,4 +1,4 @@
-import prisma from '../prisma.js';
+import prisma, { getMSAPhotoPath } from '../prisma.js';
 import { Prisma } from '@prisma/client';
 
 class CarriersController {
@@ -37,7 +37,7 @@ class CarriersController {
                         carriersId: []
                     });
                 }
-               headCarriersMap.get(headCarrierId).carriersId.push(...String(row.carries_id).split(',').map(id => id.trim()));
+                headCarriersMap.get(headCarrierId).carriersId.push(...String(row.carries_id).split(',').map(id => id.trim()));
             }
             const headCarriers = Array.from(headCarriersMap.values());
             return { success: true, headCarriers };
@@ -70,12 +70,12 @@ class CarriersController {
                     firstName: true,
                     lastName: true,
                     department: true,
-                    position: true
+                    position: true,
+                    microsoftId: true
                 }
             });
 
             const userIds = usersWithRoleUser.map(u => u.id);
-            request.log.info({ userIds }, '[getAllUserCarriers] userIds');
 
             // Luego obtener los links de userCarrier solo para estos usuarios
             const links = userIds.length
@@ -112,25 +112,30 @@ class CarriersController {
                 carrierRows.map(row => [String(row.id), row.name])
             );
 
-            const usersMapped = usersWithRoleUser.map(user => {
-                const displayName = user.fullName
-                    || [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
-                    || user.email;
+            const usersMapped = await Promise.all(
+                usersWithRoleUser.map(async (user) => {
+                    const displayName = user.fullName
+                        || [user.firstName, user.lastName].filter(Boolean).join(' ').trim()
+                        || user.email;
 
-                const carriers = Array.from(byUser.get(user.id) || new Set()).map(id => ({
-                    carrierId: id,
-                    carrierName: carrierNameById.get(String(id)) || null
-                }));
+                    const carriers = Array.from(byUser.get(user.id) || new Set()).map(id => ({
+                        carrierId: id,
+                        carrierName: carrierNameById.get(String(id)) || null
+                    }));
 
-                return {
-                    userId: user.id,
-                    name: displayName,
-                    email: user.email,
-                    department: user.department || null,
-                    position: user.position || null,
-                    carriers
-                };
-            });
+                    const photoPath = await getMSAPhotoPath(user.microsoftId);
+
+                    return {
+                        userId: user.id,
+                        name: displayName,
+                        email: user.email,
+                        department: user.department || null,
+                        position: user.position || null,
+                        carriers,
+                        photoPath: photoPath || null
+                    };
+                })
+            );
 
             const filtered = search
                 ? usersMapped.filter(user => {
