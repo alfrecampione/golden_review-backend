@@ -384,6 +384,11 @@ class PoliciesController {
                     userId: userId
                 }
             });
+            
+            return {
+                success: true,
+                message: 'Policy assigned successfully'
+            };
 
         } catch (error) {
             console.error('Error assigning policy:', error);
