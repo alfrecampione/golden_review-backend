@@ -4,14 +4,37 @@ import { Prisma } from '@prisma/client';
 class CarriersController {
     static async getAvailableCarriers(request, reply) {
         try {
+            const userId = request.query.userId;
+
+            if (!userId) {
+                request.log.warn('[getAvailableCarriers] Missing userId in query');
+                return reply.code(400).send({ success: false, error: 'userId is required' });
+            }
+
             const carriersRaw = await prisma.$queryRaw`
                 SELECT entity_id AS id, display_name AS name
                 FROM qq.contacts
                 WHERE type_display = 'R' AND status = 'A'
                 ORDER BY display_name ASC
             `;
-            // Convertir id a string
-            const carriers = carriersRaw.map(c => ({ ...c, id: String(c.id) }));
+
+            let carriers = carriersRaw.map(c => ({ ...c, id: String(c.id) }));
+
+            // Filter out carriers already assigned to other users; keep unassigned and same user's carriers
+            const assignedCarriers = await prisma.userCarrier.findMany({
+                where: {
+                    userId: {
+                        not: userId // Exclude current user's carriers
+                    }
+                },
+                select: {
+                    carrierId: true
+                }
+            });
+
+            const assignedCarrierIds = new Set(assignedCarriers.map(ac => String(ac.carrierId)));
+            carriers = carriers.filter(c => !assignedCarrierIds.has(c.id));
+
             return { success: true, carriers };
         } catch (error) {
             request.log.error({ err: error }, 'Error fetching available carriers');
