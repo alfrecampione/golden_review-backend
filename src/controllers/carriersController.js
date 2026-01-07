@@ -44,6 +44,13 @@ class CarriersController {
 
     static async getAvailableHeadCarriers(request, reply) {
         try {
+            const userId = request.query.userId;
+
+            if (!userId) {
+                request.log.warn('[getAvailableHeadCarriers] Missing userId in query');
+                return reply.code(400).send({ success: false, error: 'userId is required' });
+            }
+
             const headCarriersRaw = await prisma.$queryRaw`
                 SELECT head_carrier_id, "name", contact_id as carries_id
                 FROM intranet.head_carriers hc
@@ -60,9 +67,34 @@ class CarriersController {
                         carriersId: []
                     });
                 }
-                headCarriersMap.get(headCarrierId).carriersId.push(...String(row.carries_id).split(',').map(id => id.trim()));
+                const ids = String(row.carries_id)
+                    .split(',')
+                    .map(id => id.trim())
+                    .filter(Boolean);
+                headCarriersMap.get(headCarrierId).carriersId.push(...ids);
             }
-            const headCarriers = Array.from(headCarriersMap.values());
+            // Determine which carriers are already assigned to other users (not the current one)
+            const assignedCarriers = await prisma.userCarrier.findMany({
+                where: {
+                    userId: {
+                        not: userId
+                    }
+                },
+                select: {
+                    carrierId: true
+                }
+            });
+
+            const assignedCarrierIds = new Set(assignedCarriers.map(ac => String(ac.carrierId)));
+
+            // Include head carriers only if they retain at least one available carrier
+            const headCarriers = Array.from(headCarriersMap.values())
+                .map(hc => ({
+                    ...hc,
+                    carriersId: (hc.carriersId || []).filter(cid => !assignedCarrierIds.has(String(cid)))
+                }))
+                .filter(hc => (hc.carriersId && hc.carriersId.length > 0));
+
             return { success: true, headCarriers };
         } catch (error) {
             request.log.error({ err: error }, 'Error fetching available head carriers');
