@@ -1,4 +1,5 @@
 import prisma from '../prisma.js';
+import { Prisma } from '@prisma/client';
 
 // Controller for policies endpoints
 class PoliciesController {
@@ -42,7 +43,8 @@ class PoliciesController {
                     LOWER(p.policy_number) LIKE '%${searchLower}%' OR
                     LOWER(c.display_name) LIKE '%${searchLower}%' OR
                     LOWER(c1.display_name) LIKE '%${searchLower}%' OR
-                    LOWER(c2.display_name) LIKE '%${searchLower}%'
+                    LOWER(c2.display_name) LIKE '%${searchLower}%' OR
+                    LOWER(u."fullName") LIKE '%${searchLower}%'
                 )`;
             }
 
@@ -83,6 +85,7 @@ class PoliciesController {
                     c.display_name as insured_name, 
                     p.effective_date, 
                     p.exp_date, 
+                    p.binder_date,
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr,
@@ -110,6 +113,7 @@ class PoliciesController {
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
                 exp_date: policy.exp_date,
+                binder_date: policy.binder_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
                 csr: policy.csr,
@@ -169,7 +173,8 @@ class PoliciesController {
                     LOWER(p.policy_number) LIKE '%${searchLower}%' OR
                     LOWER(c.display_name) LIKE '%${searchLower}%' OR
                     LOWER(c1.display_name) LIKE '%${searchLower}%' OR
-                    LOWER(c2.display_name) LIKE '%${searchLower}%'
+                    LOWER(c2.display_name) LIKE '%${searchLower}%' OR
+                    LOWER(u."fullName") LIKE '%${searchLower}%'
                 )`;
             }
 
@@ -213,6 +218,7 @@ class PoliciesController {
                     c.display_name as insured_name, 
                     p.effective_date, 
                     p.exp_date, 
+                    p.binder_date,
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr,
@@ -243,6 +249,7 @@ class PoliciesController {
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
                 exp_date: policy.exp_date,
+                binder_date: policy.binder_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
                 csr: policy.csr,
@@ -301,7 +308,8 @@ class PoliciesController {
                     LOWER(p.policy_number) LIKE '%${searchLower}%' OR
                     LOWER(c.display_name) LIKE '%${searchLower}%' OR
                     LOWER(c1.display_name) LIKE '%${searchLower}%' OR
-                    LOWER(c2.display_name) LIKE '%${searchLower}%'
+                    LOWER(c2.display_name) LIKE '%${searchLower}%' OR
+                    LOWER(u."fullName") LIKE '%${searchLower}%'
                 )`;
             }
 
@@ -332,6 +340,7 @@ class PoliciesController {
                     c.display_name as insured_name, 
                     p.effective_date, 
                     p.exp_date, 
+                    p.binder_date,
                     c1.display_name as carrier, 
                     p.premium, 
                     c2.display_name as csr,
@@ -357,6 +366,7 @@ class PoliciesController {
                 insured_name: policy.insured_name,
                 effective_date: policy.effective_date,
                 exp_date: policy.exp_date,
+                binder_date: policy.binder_date,
                 carrier: policy.carrier,
                 premium: policy.premium !== null ? Number(policy.premium) : null,
                 csr: policy.csr,
@@ -396,19 +406,23 @@ class PoliciesController {
                 });
             }
 
-            // Upsert user policy assignment
-            await prisma.userPolicy.upsert({
+            // Update existing user policy assignment; do not create new rows here
+            const updated = await prisma.userPolicy.update({
                 where: {
                     policyId: policyId
                 },
-                update: {
-                    userId: userId
-                },
-                create: {
-                    policyId: policyId,
-                    userId: userId
+                data: {
+                    userId: userId,
+                    autoAssign: false
                 }
             });
+
+            if (!updated) {
+                return reply.code(404).send({
+                    success: false,
+                    error: 'Policy not found in user_policy'
+                });
+            }
 
             return {
                 success: true,
@@ -416,6 +430,10 @@ class PoliciesController {
             };
 
         } catch (error) {
+            if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+                request.log.warn({ policyId }, '[assignPolicy] policy not found in user_policy');
+                return reply.code(404).send({ success: false, error: 'Policy not found in user_policy' });
+            }
             console.error('Error assigning policy:', error);
             return reply.code(500).send({
                 success: false,

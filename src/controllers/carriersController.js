@@ -297,6 +297,31 @@ class CarriersController {
                         skipDuplicates: true
                     });
                 }
+
+                const toDeleteNums = toDelete.map(Number).filter(n => Number.isFinite(n));
+                const toInsertNums = toInsert.map(Number).filter(n => Number.isFinite(n));
+
+                if (toDeleteNums.length) {
+                    await tx.$executeRaw`
+                        UPDATE goldenaudit.user_policy up
+                        SET "userId" = NULL
+                        FROM qq.policies p
+                        WHERE up."policyId"::bigint = p.policy_id
+                            AND up."autoAssign" = true
+                            AND p.carrier_id IN (${Prisma.join(toDeleteNums)})
+                    `;
+                }
+
+                if (toInsertNums.length) {
+                    await tx.$executeRaw`
+                        UPDATE goldenaudit.user_policy up
+                        SET "userId" = ${userId}
+                        FROM qq.policies p
+                        WHERE up."policyId"::bigint = p.policy_id
+                            AND up."autoAssign" = true
+                            AND p.carrier_id IN (${Prisma.join(toInsertNums)})
+                    `;
+                }
             });
 
             return {
