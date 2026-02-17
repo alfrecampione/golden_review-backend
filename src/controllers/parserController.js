@@ -77,6 +77,15 @@ class ParserController {
             });
         } catch (error) {
             console.error('Error fetching customer_id by policyNumber:', error);
+            // If error is AxiosError with response from QQ Catalyst, propagate status and data
+            if (error.response && error.response.status && error.response.data) {
+                return reply.code(error.response.status).send({
+                    success: false,
+                    message: 'Error from QQ Catalyst',
+                    error: error.response.data
+                });
+            }
+            // Otherwise, fallback to generic 500
             return reply.code(500).send({
                 success: false,
                 message: 'Internal error fetching customer_id',
