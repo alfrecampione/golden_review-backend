@@ -3,6 +3,7 @@ import AuthController from './controllers/authController.js';
 import PoliciesController from './controllers/policiesController.js';
 import GraphController from './controllers/graphController.js';
 import CarriersController from './controllers/carriersController.js';
+import ParserController from './controllers/parserController.js';
 import { requireAuth, optionalAuth, requireMinimumRole } from './middleware/auth.js';
 
 // Function to register all routes
@@ -26,6 +27,8 @@ async function routes(fastify, options) {
     // Logout
     fastify.post('/auth/logout', AuthController.logout);
 
+    fastify.get('/parse/policy/:policyNumber', ParserController.auditPolicy);
+
     // ========== PROTECTED ROUTES (Require authentication) ==========
 
 
@@ -48,6 +51,8 @@ async function routes(fastify, options) {
     fastify.get('/policies/renewals', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getRenewals);
     fastify.get('/policies/unassigned', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.getUnassignedPolicies);
     fastify.put('/policies/:policyId/assign', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.assignPolicy);
+
+    // 
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
