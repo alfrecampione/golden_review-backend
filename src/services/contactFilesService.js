@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { pool } from '../lib/dbPool.js';
 import { uploadToS3 } from './uploadToS3.js';
+import { determineApplication } from './determine_application.js';
 import { getQqToken } from './qqAuth.js';
 
 const BASE_URL = (process.env.DB_BASE_URL || 'https://api.qqcatalyst.com').replace(/\/+$/, '');
@@ -223,6 +224,8 @@ export async function downloadFilesToDB(contactId) {
     }
 
     let uploaded = 0;
+    let foundApplication = null;
+
 
     try {
         await client.query('BEGIN');
@@ -304,6 +307,25 @@ export async function downloadFilesToDB(contactId) {
                             baseMeta.insurance_expiration ?? null
                         ]);
 
+                        // Detectar Application Form en PDFs subidos a S3
+                        if (
+                            ctHdr && ctHdr.toLowerCase().includes('pdf') &&
+                            !foundApplication
+                        ) {
+                            // Buscar en S3 el PDF con Application Form
+                            try {
+                                const appResult = await determineApplication(contactId);
+                                if (appResult && appResult.found) {
+                                    foundApplication = {
+                                        fileKey: appResult.fileKey,
+                                        s3Url: appResult.s3Url
+                                    };
+                                }
+                            } catch (appErr) {
+                                console.error('Error detectando Application Form:', appErr.message);
+                            }
+                        }
+
                         continue;
                     }
                 }
@@ -373,7 +395,8 @@ export async function downloadFilesToDB(contactId) {
             totalDocs: docs.length,
             filteredDocs: filteredDocs.length,
             newDocs: newDocs.length,
-            uploaded
+            uploaded,
+            applications: foundApplication ? [foundApplication] : []
         };
     } catch (e) {
         await client.query('ROLLBACK');
