@@ -92,7 +92,15 @@ async function listPage(contactId, pageNumber, pageSize) {
     }
 
     if (res.status < 200 || res.status >= 300) {
-        throw new Error(`HTTP ${res.status} en FilesByContact`);
+        // Log QQ API error details for debugging
+        console.error('QQ API error:', {
+            status: res.status,
+            data: res.data,
+            contactId,
+            pageNumber,
+            pageSize
+        });
+        throw new Error(`HTTP ${res.status} en FilesByContact: ${JSON.stringify(res.data)}`);
     }
 
     return res.data;

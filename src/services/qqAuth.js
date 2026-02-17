@@ -57,7 +57,7 @@ export async function getQqToken() {
         return accessToken;
 
     } catch (err) {
-        console.error('Error obteniendo token QQ:',
+        console.log('Error obteniendo token QQ:',
             err.response?.data || err.message
         );
         throw err;
