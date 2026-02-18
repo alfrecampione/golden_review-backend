@@ -108,6 +108,7 @@ class ParserController {
     // Helper: find most recent application in DB files
     static async findApplicationInFiles(files) {
         console.log('[findApplicationInFiles] Checking files for application forms');
+        let first = true;
         const foundApps = [];
         for (const file of files) {
             if (file.s3_url && file.content_type_final && file.content_type_final.includes('pdf')) {
@@ -116,12 +117,16 @@ class ParserController {
                     const match = s3Url.match(/\.amazonaws\.com\/(.+)$/);
                     const fileKey = match ? match[1] : null;
                     if (!fileKey) continue;
-                    const result = await checkSingleFile(fileKey);
-                    if (result && result.found) {
-                        foundApps.push({
-                            ...result,
-                            dbFile: file
-                        });
+                    if (first) {
+                        console.log('[findApplicationInFiles] First file being checked:', fileKey);
+                        first = false;
+                        const result = await checkSingleFile(fileKey);
+                        if (result && result.found) {
+                            foundApps.push({
+                                ...result,
+                                dbFile: file
+                            });
+                        }
                     }
                 } catch (err) {
                     console.error('[findApplicationInFiles] Error checking file for application:', err);
