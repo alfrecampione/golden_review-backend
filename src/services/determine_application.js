@@ -20,11 +20,17 @@ function streamToBuffer(stream) {
 async function containsApplicationForm(buffer) {
     try {
         const data = await pdfParse(buffer);
-        return data.text && data.text.includes('Application for Insurance');
+        console.log('data fields:', Object.keys(data));
+        const isApp = data.text && data.text.includes('Application for Insurance');
+        console.log('[containsApplicationForm] PDF text includes application form:', isApp);
+        return isApp;
     } catch (err) {
+        console.error('[containsApplicationForm] Error parsing PDF:', err);
         // fallback: búsqueda básica por texto
         const text = buffer.toString('utf8');
-        return text.includes('Application for Insurance');
+        const isApp = text.includes('Application for Insurance');
+        console.log('[containsApplicationForm] Fallback text includes application form:', isApp);
+        return isApp;
     }
 }
 
@@ -32,11 +38,12 @@ async function detectCarrier(buffer) {
     try {
         const data = await pdfParse(buffer);
         if (data.text.includes('progressive')) {
+            console.log('[detectCarrier] Carrier detected: progressive');
             return 'progressive';
         }
     }
     catch (err) {
-        console.log('Error al detectar carrier:', err);
+        console.log('[detectCarrier] Error detecting carrier:', err);
     }
     return null;
 }
