@@ -1,8 +1,7 @@
 import 'dotenv/config';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
-import pdfParseModule from 'pdf-parse';
 
-const { PDFParse } = pdfParseModule;
+import { PDFParse } from 'pdf-parse';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const BUCKET = process.env.AWS_S3_BUCKET;
@@ -16,9 +15,9 @@ function streamToBuffer(stream) {
     });
 }
 
+
 async function extractText(buffer) {
     const parser = new PDFParse({ data: buffer });
-
     try {
         const result = await parser.getText();
         return result?.text?.toLowerCase() || '';
