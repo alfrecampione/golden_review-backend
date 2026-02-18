@@ -42,39 +42,41 @@ class ParserController {
 
             const syncResult = await downloadFilesToDB(numericCustomerId);
 
-            // Si se detectó aplicación de seguro, inclúyela en la respuesta
-            let applicationInfo = null;
-            let lambdaResult = null;
-            if (syncResult && Array.isArray(syncResult.applications) && syncResult.applications.length > 0) {
-                applicationInfo = syncResult.applications;
-                // Selecciona la aplicación más reciente
-                const sortedApps = applicationInfo.slice().sort((a, b) => b.size - a.size);
-                let mostRecent = sortedApps[0];
-                if (applicationInfo.length > 1 && applicationInfo[0].fileName && applicationInfo[0].fileName.match(/\d{4}-\d{2}-\d{2}/)) {
-                    mostRecent = applicationInfo.slice().sort((a, b) => {
-                        const getDate = (f) => {
-                            const m = f.fileName.match(/(\d{4}-\d{2}-\d{2})/);
-                            return m ? new Date(m[1]) : new Date(0);
-                        };
-                        return getDate(b) - getDate(a);
-                    })[0];
-                }
-                // Llama a la función Lambda AWS
-                try {
-                    lambdaResult = await invokePdfLambda(mostRecent.s3Url);
-                } catch (lambdaErr) {
-                    lambdaResult = { error: 'Error invoking Lambda', details: lambdaErr.message };
-                }
-            }
+            console.log('Sync result:', syncResult);
 
-            return reply.send({
-                success: true,
-                policyNumber,
-                customerId: numericCustomerId,
-                sync: syncResult,
-                applicationInfo,
-                lambdaResult
-            });
+            // Si se detectó aplicación de seguro, inclúyela en la respuesta
+            // let applicationInfo = null;
+            // let lambdaResult = null;
+            // if (syncResult && Array.isArray(syncResult.applications) && syncResult.applications.length > 0) {
+            //     applicationInfo = syncResult.applications;
+            //     // Selecciona la aplicación más reciente
+            //     const sortedApps = applicationInfo.slice().sort((a, b) => b.size - a.size);
+            //     let mostRecent = sortedApps[0];
+            //     if (applicationInfo.length > 1 && applicationInfo[0].fileName && applicationInfo[0].fileName.match(/\d{4}-\d{2}-\d{2}/)) {
+            //         mostRecent = applicationInfo.slice().sort((a, b) => {
+            //             const getDate = (f) => {
+            //                 const m = f.fileName.match(/(\d{4}-\d{2}-\d{2})/);
+            //                 return m ? new Date(m[1]) : new Date(0);
+            //             };
+            //             return getDate(b) - getDate(a);
+            //         })[0];
+            //     }
+            //     // Llama a la función Lambda AWS
+            //     try {
+            //         lambdaResult = await invokePdfLambda(mostRecent.s3Url);
+            //     } catch (lambdaErr) {
+            //         lambdaResult = { error: 'Error invoking Lambda', details: lambdaErr.message };
+            //     }
+            // }
+
+            // return reply.send({
+            //     success: true,
+            //     policyNumber,
+            //     customerId: numericCustomerId,
+            //     sync: syncResult,
+            //     applicationInfo,
+            //     lambdaResult
+            // });
         } catch (error) {
             console.error('Error fetching customer_id by policyNumber:', error);
             // If error is AxiosError with response from QQ Catalyst, propagate status and data

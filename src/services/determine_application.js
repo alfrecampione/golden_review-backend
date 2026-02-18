@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import { createRequire } from 'module';
+
 const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 
@@ -19,12 +20,25 @@ function streamToBuffer(stream) {
 async function containsApplicationForm(buffer) {
     try {
         const data = await pdfParse(buffer);
-        return data.text && data.text.includes('Application Form');
+        return data.text && data.text.includes('Application for Insurance');
     } catch (err) {
         // fallback: búsqueda básica por texto
         const text = buffer.toString('utf8');
-        return text.includes('Application Form');
+        return text.includes('Application for Insurance');
     }
+}
+
+async function detectCarrier(buffer) {
+    try {
+        const data = await pdfParse(buffer);
+        if (data.text.includes('progressive')) {
+            return 'progressive';
+        }
+    }
+    catch (err) {
+        console.log('Error al detectar carrier:', err);
+    }
+    return null;
 }
 
 export async function determineApplication(customerId) {
@@ -67,10 +81,12 @@ export async function determineApplication(customerId) {
         const buffer = await streamToBuffer(fileObj.Body);
         if (await containsApplicationForm(buffer)) {
             const s3Url = `https://${BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${file.Key}`;
+            const carrier = await detectCarrier(buffer);
             return {
                 found: true,
                 fileKey: file.Key,
-                s3Url
+                s3Url,
+                carrier
             };
         }
     }
