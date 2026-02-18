@@ -47,6 +47,7 @@ class ParserController {
             // 3. Get all files for this user from DB
             console.log('[auditPolicy] Step 3: Fetching all files for customer from DB');
             const dbFiles = await ParserController.getFilesForCustomer(numericCustomerId);
+            console.log(`[auditPolicy] Found ${dbFiles.length} files in DB for customer ${numericCustomerId}`);
 
             // 4. Determine if any file is an application
             console.log('[auditPolicy] Step 4: Searching for application file in DB files');
