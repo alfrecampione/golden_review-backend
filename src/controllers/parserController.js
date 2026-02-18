@@ -48,7 +48,6 @@ class ParserController {
             console.log('[auditPolicy] Step 3: Fetching all files for customer from DB');
             const dbFiles = await ParserController.getFilesForCustomer(numericCustomerId);
             console.log(`[auditPolicy] Found ${dbFiles.length} files in DB for customer ${numericCustomerId}`);
-            console.log('[auditPolicy] DB files:', dbFiles[0]);
 
             // 4. Determine if any file is an application
             console.log('[auditPolicy] Step 4: Searching for application file in DB files');
@@ -109,21 +108,16 @@ class ParserController {
     // Helper: find most recent application in DB files
     static async findApplicationInFiles(files) {
         console.log('[findApplicationInFiles] Checking files for application forms');
-        let first = true;
         const foundApps = [];
         for (const file of files) {
-            if (file.s3_url && file.content_type_final.includes('pdf')) {
+            if (file.s3_url && file.file_name_reported.endsWith('pdf')) {
                 try {
-                    if (first) {
-                        console.log('[findApplicationInFiles] First file being checked:', file.s3_url);
-                        first = false;
-                        const result = await checkSingleFile(file.s3_url);
-                        if (result && result.found) {
-                            foundApps.push({
-                                ...result,
-                                dbFile: file
-                            });
-                        }
+                    const result = await checkSingleFile(file.s3_url);
+                    if (result && result.found) {
+                        foundApps.push({
+                            ...result,
+                            dbFile: file
+                        });
                     }
                 } catch (err) {
                     console.error('[findApplicationInFiles] Error checking file for application:', err);
