@@ -111,16 +111,13 @@ class ParserController {
         let first = true;
         const foundApps = [];
         for (const file of files) {
-            if (file.s3_url && file.content_type_final && file.content_type_final.includes('pdf')) {
+            console.log(`[findApplicationInFiles] Checking file: ${file}`);
+            if (file.s3_url && file.content_type_final.includes('pdf')) {
                 try {
-                    const s3Url = file.s3_url;
-                    const match = s3Url.match(/\.amazonaws\.com\/(.+)$/);
-                    const fileKey = match ? match[1] : null;
-                    if (!fileKey) continue;
                     if (first) {
-                        console.log('[findApplicationInFiles] First file being checked:', fileKey);
+                        console.log('[findApplicationInFiles] First file being checked:', file.s3_url);
                         first = false;
-                        const result = await checkSingleFile(fileKey);
+                        const result = await checkSingleFile(file.s3_url);
                         if (result && result.found) {
                             foundApps.push({
                                 ...result,
