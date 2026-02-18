@@ -111,7 +111,7 @@ class ParserController {
         let first = true;
         const foundApps = [];
         for (const file of files) {
-            console.log(`[findApplicationInFiles] Checking file: ${file}`);
+            console.log(`[findApplicationInFiles] Checking file: ${JSON.stringify(file)}`);
             if (file.s3_url && file.content_type_final.includes('pdf')) {
                 try {
                     if (first) {
