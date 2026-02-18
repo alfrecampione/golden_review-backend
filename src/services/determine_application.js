@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const pdfParse = require('pdf-parse');
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
-const BUCKET = process.env.S3_BUCKET;
+const BUCKET = process.env.AWS_S3_BUCKET;
 
 function streamToBuffer(stream) {
     return new Promise((resolve, reject) => {
@@ -47,7 +47,7 @@ export async function determineApplication(customerId) {
     }
 
     if (!BUCKET) {
-        throw new Error('S3_BUCKET no configurado');
+        throw new Error('AWS_S3_BUCKET no configurado');
     }
 
     // 1️⃣ Listar objetos bajo el prefijo del customer
@@ -97,7 +97,7 @@ export async function determineApplication(customerId) {
 // Check a single S3 file by key for application form and carrier
 export async function checkSingleFile(fileKey) {
     if (!fileKey) return { found: false };
-    if (!BUCKET) throw new Error('S3_BUCKET no configurado');
+    if (!BUCKET) throw new Error('AWS_S3_BUCKET no configurado');
     const fileObj = await s3.send(
         new GetObjectCommand({
             Bucket: BUCKET,
