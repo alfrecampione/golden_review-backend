@@ -93,3 +93,27 @@ export async function determineApplication(customerId) {
 
     return { found: false };
 }
+
+// Check a single S3 file by key for application form and carrier
+export async function checkSingleFile(fileKey) {
+    if (!fileKey) return { found: false };
+    if (!BUCKET) throw new Error('S3_BUCKET no configurado');
+    const fileObj = await s3.send(
+        new GetObjectCommand({
+            Bucket: BUCKET,
+            Key: fileKey
+        })
+    );
+    const buffer = await streamToBuffer(fileObj.Body);
+    if (await containsApplicationForm(buffer)) {
+        const s3Url = `https://${BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${fileKey}`;
+        const carrier = await detectCarrier(buffer);
+        return {
+            found: true,
+            fileKey,
+            s3Url,
+            carrier
+        };
+    }
+    return { found: false };
+}
