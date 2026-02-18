@@ -95,9 +95,14 @@ export async function determineApplication(customerId) {
 }
 
 // Check a single S3 file by key for application form and carrier
-export async function checkSingleFile(fileKey) {
-    if (!fileKey) return { found: false };
+export async function checkSingleFile(s3Url) {
+    if (!s3Url) return { found: false };
     if (!BUCKET) throw new Error('AWS_S3_BUCKET no configurado');
+    // Always expects a full S3 URL, extract the key
+    const match = s3Url.match(/\.amazonaws\.com\/(.+)$/);
+    console.log('[checkSingleFile] Checking S3 URL for application:', match ? match[1] : 'No match');
+    const fileKey = match ? match[1] : null;
+    if (!fileKey) return { found: false };
     const fileObj = await s3.send(
         new GetObjectCommand({
             Bucket: BUCKET,
@@ -106,7 +111,6 @@ export async function checkSingleFile(fileKey) {
     );
     const buffer = await streamToBuffer(fileObj.Body);
     if (await containsApplicationForm(buffer)) {
-        const s3Url = `https://${BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${fileKey}`;
         const carrier = await detectCarrier(buffer);
         return {
             found: true,
