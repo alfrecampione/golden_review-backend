@@ -1,11 +1,19 @@
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
 import 'dotenv/config';
 
-const client = new LambdaClient({
-    region: process.env.AWS_REGION || 'us-east-1',
-});
+// Crea el cliente Lambda usando credenciales especiales para Lambda
+function getLambdaClient() {
+    return new LambdaClient({
+        region: process.env.AWS_REGION || 'us-east-1',
+        credentials: {
+            accessKeyId: process.env.LAMBDA_AWS_ACCESS_KEY_ID,
+            secretAccessKey: process.env.LAMBDA_AWS_SECRET_ACCESS_KEY,
+        },
+    });
+}
 
 export async function invokePdfLambda(s3Url) {
+    const client = getLambdaClient();
     const payload = {
         s3_url: s3Url,
     };
