@@ -3,11 +3,18 @@ import 'dotenv/config';
 
 // Crea el cliente Lambda usando credenciales especiales para Lambda
 function getLambdaClient() {
+    const accessKeyId = process.env.LAMBDA_AWS_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.LAMBDA_AWS_SECRET_ACCESS_KEY;
+    if (!accessKeyId || !secretAccessKey) {
+        console.error('[lambdaInvoke] ERROR: LAMBDA_AWS_ACCESS_KEY_ID o LAMBDA_AWS_SECRET_ACCESS_KEY no están definidos.');
+        throw new Error('Credenciales de Lambda no definidas en variables de entorno');
+    }
+
     return new LambdaClient({
         region: process.env.AWS_REGION || 'us-east-1',
         credentials: {
-            accessKeyId: process.env.LAMBDA_AWS_ACCESS_KEY_ID,
-            secretAccessKey: process.env.LAMBDA_AWS_SECRET_ACCESS_KEY,
+            accessKeyId,
+            secretAccessKey,
         },
     });
 }
