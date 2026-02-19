@@ -15,7 +15,6 @@ class ParserController {
             }
 
             // 1. Get customerId from policyNumber
-            console.log('[auditPolicy] Step 1: Fetching customer_id for policyNumber', policyNumber);
             const result = await prisma.$queryRaw`
                 SELECT customer_id
                 FROM qq.policies
@@ -40,17 +39,13 @@ class ParserController {
             }
 
             // 2. Sync files to S3 and DB
-            console.log('[auditPolicy] Step 2: Syncing files to S3 and DB for customer', numericCustomerId);
             const syncResult = await downloadFilesToDB(numericCustomerId);
             console.log('[auditPolicy] Sync result:', syncResult);
 
             // 3. Get all files for this user from DB
-            console.log('[auditPolicy] Step 3: Fetching all files for customer from DB');
             const dbFiles = await ParserController.getFilesForCustomer(numericCustomerId);
-            console.log(`[auditPolicy] Found ${dbFiles.length} files in DB for customer ${numericCustomerId}`);
 
             // 4. Determine if any file is an application
-            console.log('[auditPolicy] Step 4: Searching for application file in DB files');
             const applicationInfo = await ParserController.findApplicationInFiles(dbFiles);
 
             if (!applicationInfo) {
@@ -63,18 +58,14 @@ class ParserController {
             // 5. Call Lambda with the S3 URL of the application file
             let lambdaResult;
             try {
-                console.log('[auditPolicy] Step 5: Invoking Lambda with S3 URL', applicationInfo.s3Url);
                 lambdaResult = await invokePdfLambda(applicationInfo.s3Url);
             } catch (lambdaErr) {
-                console.error('[auditPolicy] Lambda invocation error:', lambdaErr);
                 return reply.code(500).send({
                     success: false,
                     message: 'Error invoking Lambda',
                     error: lambdaErr.message
                 });
             }
-
-            console.log('[auditPolicy] Step 6: Lambda invocation success');
             return reply.send({
                 success: true,
                 lambdaResult
@@ -98,7 +89,6 @@ class ParserController {
 
     // Helper: get all files for a customer from DB
     static async getFilesForCustomer(customerId) {
-        console.log('[getFilesForCustomer] Fetching files for customer', customerId);
         const files = await prisma.$queryRaw`
             SELECT * FROM qq.contact_files WHERE contact_id = ${customerId}
         `;
@@ -107,7 +97,6 @@ class ParserController {
 
     // Helper: find most recent application in DB files
     static async findApplicationInFiles(files) {
-        console.log('[findApplicationInFiles] Checking files for application forms');
         const foundApps = [];
         for (const file of files) {
             if (file.s3_url && file.file_name_reported.endsWith('pdf')) {
