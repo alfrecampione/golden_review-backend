@@ -27,8 +27,6 @@ async function routes(fastify, options) {
     // Logout
     fastify.post('/auth/logout', AuthController.logout);
 
-    fastify.get('/parse/policy/:policyId', ParserController.auditPolicy);
-
     // ========== PROTECTED ROUTES (Require authentication) ==========
 
 
@@ -51,7 +49,7 @@ async function routes(fastify, options) {
     fastify.get('/policies/renewals', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getRenewals);
     fastify.get('/policies/unassigned', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.getUnassignedPolicies);
     fastify.put('/policies/:policyId/assign', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.assignPolicy);
-
+    fastify.get('/parse/policy/:policyId', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.auditPolicy);
     // 
 
     // Server health route

@@ -443,6 +443,69 @@ class PoliciesController {
         }
     }
 
+    static async auditPolicy(request, reply) {
+        try {
+            let { policyId } = request.params;
+            if (!policyId) {
+                return reply.code(400).send({
+                    success: false,
+                    message: 'policyId is required'
+                });
+            }
+            policyId = Number(policyId);
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({
+                    success: false,
+                    message: 'policyId must be an integer'
+                });
+            }
+
+            // 1. Get customerId from policyId (policy_id is int)
+            const result = await prisma.$queryRaw`
+                SELECT customer_id
+                FROM qq.policies
+                WHERE policy_id = ${policyId}
+                LIMIT 1
+            `;
+            const customerId = Array.isArray(result) && result.length > 0
+                ? String(result[0].customer_id)
+                : null;
+            if (!customerId) {
+                return reply.code(404).send({
+                    success: false,
+                    message: 'Policy not found'
+                });
+            }
+            const numericCustomerId = Number(customerId);
+            if (Number.isNaN(numericCustomerId)) {
+                return reply.code(400).send({
+                    success: false,
+                    message: 'customer_id must be numeric'
+                });
+            }
+
+
+            const { applicationInfo } = await syncAndFindApplication(numericCustomerId);
+            return reply.send({
+                success: true,
+                applicationInfo
+            });
+        } catch (error) {
+            console.error('Error fetching customer_id by policyId:', error);
+            if (error.response && error.response.status && error.response.data) {
+                return reply.code(error.response.status).send({
+                    success: false,
+                    message: 'Error from QQ Catalyst',
+                    error: error.response.data
+                });
+            }
+            return reply.code(500).send({
+                success: false,
+                message: 'Internal error fetching customer_id',
+                error: error.message
+            });
+        }
+    }
 }
 
 export default PoliciesController;
