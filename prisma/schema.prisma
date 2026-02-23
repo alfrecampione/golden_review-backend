@@ -91,3 +91,25 @@ model UpdatePolicyJobLog {
   @@map("update_policy_job_log")
   @@schema("goldenaudit")
 }
+
+model FileSyncJobLog {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @map("created_at")
+  processedLogIds Json // Array of UpdatePolicyJobLog IDs that were processed
+  customerCount   Int
+  policyCount     Int
+
+  @@map("file_sync_job_logs")
+  @@schema("goldenaudit")
+}
+
+model UserApplication {
+  id                String   @id @default(uuid())
+  customerId        String   @unique
+  applicationS3file String
+  isProcessed       Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  @@map("user_application")
+  @@schema("goldenaudit")
+}
