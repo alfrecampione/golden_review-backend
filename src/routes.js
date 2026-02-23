@@ -27,7 +27,7 @@ async function routes(fastify, options) {
     // Logout
     fastify.post('/auth/logout', AuthController.logout);
 
-    fastify.get('/parse/policy/:policyNumber', ParserController.auditPolicy);
+    fastify.get('/parse/policy/:policyId', ParserController.auditPolicy);
 
     // ========== PROTECTED ROUTES (Require authentication) ==========
 
