@@ -5,15 +5,22 @@ import { invokePdfLambda } from '../services/lambdaInvoke.js';
 class ParserController {
     static auditPolicy = async (request, reply) => {
         try {
-            const { policyId } = request.params;
+            let { policyId } = request.params;
             if (!policyId) {
                 return reply.code(400).send({
                     success: false,
                     message: 'policyId is required'
                 });
             }
+            policyId = Number(policyId);
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({
+                    success: false,
+                    message: 'policyId debe ser un entero'
+                });
+            }
 
-            // 1. Get customerId from policyId
+            // 1. Get customerId from policyId (policy_id is int)
             const result = await prisma.$queryRaw`
                 SELECT customer_id
                 FROM qq.policies

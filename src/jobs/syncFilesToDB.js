@@ -43,7 +43,7 @@ async function syncFilesFromPolicyLogs() {
     const allPolicyIds = [];
     for (const log of policyLogs) {
         if (Array.isArray(log.policyIds)) {
-            allPolicyIds.push(...log.policyIds.map(id => String(id)));
+            allPolicyIds.push(...log.policyIds.map(id => Number(id)).filter(id => Number.isInteger(id)));
         }
     }
 
@@ -58,12 +58,11 @@ async function syncFilesFromPolicyLogs() {
         };
     }
 
-    // 4) Get unique customer IDs for these policy IDs
-    // Using raw SQL because policyIds may be strings and we need to join with policies table
+    // 4) Get unique customer IDs for these policy IDs (policyId is int)
     const customerRows = await prisma.$queryRaw`
         SELECT DISTINCT customer_id
         FROM qq.policies
-        WHERE policy_id::text IN (${allPolicyIds.join(',')})
+        WHERE policy_id IN (${prisma.join(allPolicyIds)})
     `;
 
     const uniqueCustomerIds = customerRows
@@ -104,13 +103,13 @@ async function syncFilesFromPolicyLogs() {
 
             // d) Check or create UserApplication record
             let userApp = await prisma.userApplication.findUnique({
-                where: { customerId: String(customerId) },
+                where: { customerId: customerId },
             });
 
             if (!userApp) {
                 userApp = await prisma.userApplication.create({
                     data: {
-                        customerId: String(customerId),
+                        customerId: customerId,
                         applicationS3file: s3Url,
                         isProcessed: false,
                     },
