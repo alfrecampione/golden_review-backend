@@ -1,6 +1,7 @@
 // jobs/fileSyncFromPolicyLogsJob.js
 import cron from 'node-cron';
 import prisma from '../prisma.js';
+import { Prisma } from '@prisma/client';
 import { syncAndFindApplication } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
@@ -62,7 +63,7 @@ async function syncFilesFromPolicyLogs() {
     const customerRows = await prisma.$queryRaw`
         SELECT DISTINCT customer_id
         FROM qq.policies
-        WHERE policy_id IN (${prisma.join(allPolicyIds)})
+        WHERE policy_id IN (${Prisma.join(allPolicyIds)})
     `;
 
     const uniqueCustomerIds = customerRows
