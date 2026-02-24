@@ -3,7 +3,6 @@ import AuthController from './controllers/authController.js';
 import PoliciesController from './controllers/policiesController.js';
 import GraphController from './controllers/graphController.js';
 import CarriersController from './controllers/carriersController.js';
-import ParserController from './controllers/parserController.js';
 import { requireAuth, optionalAuth, requireMinimumRole } from './middleware/auth.js';
 
 // Function to register all routes
