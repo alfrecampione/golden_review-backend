@@ -205,19 +205,20 @@ async function syncFilesFromPolicyLogs(options = {}) {
 
 let jobStarted = false;
 
-export function startFilesFromPolicyLogsJob() {
+export function startFilesFromPolicyLogsJob(onlyYesterday = true) {
     if (jobStarted) return;
 
     // Run daily at 00:00 UTC
     cron.schedule('0 0 * * *', () => {
         syncFilesFromPolicyLogs()
+
             .then(res => console.log('[filesFromPolicyLogsJob] Scheduled run result:', res))
             .catch(err => console.error('[filesFromPolicyLogsJob] Scheduled run failed:', err));
     });
 
     console.log('[filesFromPolicyLogsJob] starting...');
     // Optionally run once at startup (process previous day immediately)
-    syncFilesFromPolicyLogs()
+    syncFilesFromPolicyLogs({ onlyYesterday })
         .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
         .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
 

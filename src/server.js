@@ -101,7 +101,7 @@ fastify.register(routes);
 // Schedule background jobs
 startUserSyncJob();
 startPoliciesSyncJob();
-startFilesFromPolicyLogsJob();
+startFilesFromPolicyLogsJob({ onlyYesterday: process.env.ONLY_YESTERDAY_LOGS || false });
 
 // Function to start the server
 const start = async () => {
