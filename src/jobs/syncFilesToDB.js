@@ -14,11 +14,9 @@ import { invokePdfLambda } from '../services/lambdaInvoke.js';
  *  - Mark as processed on success
  */
 /**
- * @param {Object} [options]
- * @param {boolean} [options.onlyYesterday=true] Si true, procesa solo los logs de ayer; si false, procesa toda la tabla
+ * @param {boolean} [onlyYesterday=true] Si true, procesa solo los logs de ayer; si false, procesa toda la tabla
  */
-async function syncFilesFromPolicyLogs(options = {}) {
-    const { onlyYesterday = true } = options;
+async function syncFilesFromPolicyLogs(onlyYesterday = true) {
     // 1) Determine range or fetch all
     let policyLogs;
     if (onlyYesterday) {
