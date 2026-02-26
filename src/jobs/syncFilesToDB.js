@@ -154,12 +154,13 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
             }
 
             let carrier = applicationInfo.carrier;
-            if (carrier && carrier.toLowerCase() !== 'progressive') {
-                console.log(`[syncFilesFromPolicyLogs] Carrier for customer ${customerId} is not Progressive, skipping Lambda invocation`);
+            if (!carrier || carrier.toLowerCase() !== 'progressive') {
+                console.log(`[syncFilesFromPolicyLogs] Carrier for customer ${customerId} is not Progressive or unknown, skipping Lambda invocation`);
                 processedCount++;
                 processedCustomerIds.push(customerId);
                 continue;
             }
+
             // e) Get s3_url from qq.contact_files and invoke Lambda
             let lambdaResult;
             try {
