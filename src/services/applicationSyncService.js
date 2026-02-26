@@ -41,7 +41,6 @@ export async function findApplicationInFiles(files) {
         const dateB = new Date(b.dbFile.inserted_at);
         return dateB - dateA;
     });
-    console.log('[findApplicationInFiles] Most recent application file selected:', foundApps[0]?.dbFile?.s3_url);
     return foundApps[0];
 }
 
