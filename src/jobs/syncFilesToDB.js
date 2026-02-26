@@ -110,7 +110,22 @@ async function syncFilesFromPolicyLogs(options = {}) {
                 continue;
             }
 
-            const fileId = applicationInfo.fileId || applicationInfo.file_id || applicationInfo;
+            // Extraer file_id correctamente
+            let fileId = null;
+            if (applicationInfo.dbFile && applicationInfo.dbFile.file_id) {
+                fileId = String(applicationInfo.dbFile.file_id);
+            } else if (applicationInfo.fileId) {
+                fileId = String(applicationInfo.fileId);
+            } else if (applicationInfo.file_id) {
+                fileId = String(applicationInfo.file_id);
+            } else if (typeof applicationInfo === 'string') {
+                fileId = applicationInfo;
+            }
+            if (!fileId) {
+                console.error(`[syncFilesFromPolicyLogs] No valid fileId found for customer ${customerId}`);
+                failedCount++;
+                continue;
+            }
 
             // d) Check or create UserApplication record
             let userApp = await prisma.userApplication.findUnique({
