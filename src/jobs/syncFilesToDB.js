@@ -154,7 +154,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
             }
 
             let carrier = applicationInfo.carrier;
-            if (carrier.toLowerCase() !== 'progressive') {
+            if (carrier && carrier.toLowerCase() !== 'progressive') {
                 console.log(`[syncFilesFromPolicyLogs] Carrier for customer ${customerId} is not Progressive, skipping Lambda invocation`);
                 processedCount++;
                 processedCustomerIds.push(customerId);
