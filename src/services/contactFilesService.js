@@ -317,8 +317,7 @@ export async function downloadFilesToDB(contactId) {
                                 const appResult = await determineApplication(contactId);
                                 if (appResult && appResult.found) {
                                     foundApplication = {
-                                        fileKey: appResult.fileKey,
-                                        s3Url: appResult.s3Url
+                                        file_id: appResult.fileKey
                                     };
                                 }
                             } catch (appErr) {
@@ -396,7 +395,7 @@ export async function downloadFilesToDB(contactId) {
             filteredDocs: filteredDocs.length,
             newDocs: newDocs.length,
             uploaded,
-            applications: foundApplication ? [foundApplication] : []
+            applications: foundApplication ? [foundApplication.file_id] : []
         };
     } catch (e) {
         await client.query('ROLLBACK');

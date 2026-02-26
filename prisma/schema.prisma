@@ -104,11 +104,11 @@ model FileSyncJobLog {
 }
 
 model UserApplication {
-  id                String   @id @default(uuid())
-  customerId        Int      @unique
-  applicationS3file String
-  isProcessed       Boolean  @default(false)
-  createdAt         DateTime @default(now())
+  id          String   @id @default(uuid())
+  customerId  Int      @unique
+  fileId      String
+  isProcessed Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
   @@map("user_application")
   @@schema("goldenaudit")

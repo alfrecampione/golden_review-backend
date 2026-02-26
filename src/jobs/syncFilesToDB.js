@@ -13,21 +13,31 @@ import { invokePdfLambda } from '../services/lambdaInvoke.js';
  *  - Store in UserApplication and invoke Lambda to extract data
  *  - Mark as processed on success
  */
-async function syncFilesFromPolicyLogs() {
-    // 1) Determine UTC range for yesterday
-    const now = new Date();
-    const startOfYesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
-    const endOfYesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 23, 59, 59, 999));
-
-    // 2) Fetch all UpdatePolicyJobLog entries from that day
-    const policyLogs = await prisma.updatePolicyJobLog.findMany({
-        where: {
-            createdAt: {
-                gte: startOfYesterday,
-                lte: endOfYesterday,
+/**
+ * @param {Object} [options]
+ * @param {boolean} [options.onlyYesterday=true] Si true, procesa solo los logs de ayer; si false, procesa toda la tabla
+ */
+async function syncFilesFromPolicyLogs(options = {}) {
+    const { onlyYesterday = true } = options;
+    // 1) Determine range or fetch all
+    let policyLogs;
+    if (onlyYesterday) {
+        const now = new Date();
+        const startOfYesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0, 0));
+        const endOfYesterday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 23, 59, 59, 999));
+        // 2) Fetch all UpdatePolicyJobLog entries from that day
+        policyLogs = await prisma.updatePolicyJobLog.findMany({
+            where: {
+                createdAt: {
+                    gte: startOfYesterday,
+                    lte: endOfYesterday,
+                },
             },
-        },
-    });
+        });
+    } else {
+        // Fetch all logs
+        policyLogs = await prisma.updatePolicyJobLog.findMany();
+    }
 
     if (!policyLogs.length) {
         return {
@@ -100,7 +110,7 @@ async function syncFilesFromPolicyLogs() {
                 continue;
             }
 
-            const s3Url = applicationInfo.s3Url;
+            const fileId = applicationInfo.fileId || applicationInfo.file_id || applicationInfo;
 
             // d) Check or create UserApplication record
             let userApp = await prisma.userApplication.findUnique({
@@ -111,7 +121,7 @@ async function syncFilesFromPolicyLogs() {
                 userApp = await prisma.userApplication.create({
                     data: {
                         customerId: customerId,
-                        applicationS3file: s3Url,
+                        fileId: fileId,
                         isProcessed: false,
                     },
                 });
@@ -120,26 +130,32 @@ async function syncFilesFromPolicyLogs() {
                 processedCount++;
                 processedCustomerIds.push(customerId);
                 continue;
-            } else if (userApp.applicationS3file !== s3Url) {
+            } else if (userApp.fileId !== fileId) {
                 userApp = await prisma.userApplication.update({
                     where: { id: userApp.id },
                     data: {
-                        applicationS3file: s3Url,
+                        fileId: fileId,
                         isProcessed: false,
                     },
                 });
             }
 
-            // e) Invoke Lambda to process the PDF
+            // e) Get s3_url from qq.contact_files and invoke Lambda
             let lambdaResult;
             try {
+                // Get s3_url from DB
+                const fileRow = await prisma.$queryRaw`SELECT s3_url FROM qq.contact_files WHERE file_id = ${fileId}`;
+                const s3Url = Array.isArray(fileRow) && fileRow.length > 0 ? fileRow[0].s3_url : null;
+                if (!s3Url) {
+                    throw new Error(`No s3_url found for file_id ${fileId}`);
+                }
                 lambdaResult = await invokePdfLambda(s3Url);
                 console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, lambdaResult);
 
-                await prisma.userApplication.update({
-                    where: { id: userApp.id },
-                    data: { isProcessed: true },
-                });
+                // await prisma.userApplication.update({
+                //     where: { id: userApp.id },
+                //     data: { isProcessed: true },
+                // });
 
                 processedCount++;
                 processedCustomerIds.push(customerId);
