@@ -224,9 +224,9 @@ export function startFilesFromPolicyLogsJob(onlyYesterday = true) {
 
     console.log('[filesFromPolicyLogsJob] starting...');
     // Optionally run once at startup (process previous day immediately)
-    syncFilesFromPolicyLogs({ onlyYesterday })
-        .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
-        .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
+    // syncFilesFromPolicyLogs({ onlyYesterday })
+    //     .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
+    //     .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
 
     jobStarted = true;
 }
