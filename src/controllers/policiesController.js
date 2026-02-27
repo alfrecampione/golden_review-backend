@@ -447,13 +447,16 @@ class PoliciesController {
     static async auditPolicy(request, reply) {
         try {
             let { policyId } = request.params;
+
             if (!policyId) {
                 return reply.code(400).send({
                     success: false,
                     message: 'policyId is required'
                 });
             }
+
             policyId = Number(policyId);
+
             if (!Number.isInteger(policyId)) {
                 return reply.code(400).send({
                     success: false,
@@ -461,48 +464,111 @@ class PoliciesController {
                 });
             }
 
-            // 1. Get customerId from policyId (policy_id is int)
+            // Get customer_id from policy
             const result = await prisma.$queryRaw`
-                SELECT customer_id
-                FROM qq.policies
-                WHERE policy_id = ${policyId}
-                LIMIT 1
-            `;
+            SELECT customer_id
+            FROM qq.policies
+            WHERE policy_id = ${policyId}
+            LIMIT 1
+        `;
+
             const customerId = Array.isArray(result) && result.length > 0
-                ? String(result[0].customer_id)
+                ? Number(result[0].customer_id)
                 : null;
+
             if (!customerId) {
                 return reply.code(404).send({
                     success: false,
                     message: 'Policy not found'
                 });
             }
-            const numericCustomerId = Number(customerId);
-            if (Number.isNaN(numericCustomerId)) {
+
+            if (Number.isNaN(customerId)) {
                 return reply.code(400).send({
                     success: false,
                     message: 'customer_id must be numeric'
                 });
             }
 
+            // Sync + find application
+            const { applicationInfo } = await syncAndFindApplication(customerId);
 
-            const { applicationInfo } = await syncAndFindApplication(numericCustomerId);
-            return reply.send({
-                success: true,
-                applicationInfo
-            });
+            if (!applicationInfo) {
+                return reply.send({
+                    success: true,
+                    data: null
+                });
+            }
+
+            // Extract fileId (same logic as job)
+            let fileId = null;
+
+            if (applicationInfo.dbFile?.file_id) {
+                fileId = String(applicationInfo.dbFile.file_id);
+            } else if (applicationInfo.fileId) {
+                fileId = String(applicationInfo.fileId);
+            } else if (applicationInfo.file_id) {
+                fileId = String(applicationInfo.file_id);
+            } else if (typeof applicationInfo === 'string') {
+                fileId = applicationInfo;
+            }
+
+            if (!fileId) {
+                return reply.send({
+                    success: true,
+                    data: null
+                });
+            }
+
+            // Validate carrier
+            const carrier = applicationInfo.carrier;
+
+            if (!carrier || carrier.toLowerCase() !== 'progressive') {
+                return reply.send({
+                    success: true,
+                    data: null
+                });
+            }
+
+            // Get s3_url
+            const fileRow = await prisma.$queryRaw`
+            SELECT s3_url
+            FROM qq.contact_files
+            WHERE file_id = ${fileId}
+            LIMIT 1
+        `;
+
+            const s3Url = Array.isArray(fileRow) && fileRow.length > 0
+                ? fileRow[0].s3_url
+                : null;
+
+            if (!s3Url) {
+                return reply.code(404).send({
+                    success: false,
+                    message: `No s3_url found for file_id ${fileId}`
+                });
+            }
+
+            // Invoke Lambda
+            const lambdaResult = await invokePdfLambda(s3Url);
+
+            // Return EXACT lambda JSON
+            return reply.send(lambdaResult);
+
         } catch (error) {
-            console.error('Error fetching customer_id by policyId:', error);
-            if (error.response && error.response.status && error.response.data) {
+            console.error('Error auditing policy:', error);
+
+            if (error.response?.status && error.response?.data) {
                 return reply.code(error.response.status).send({
                     success: false,
-                    message: 'Error from QQ Catalyst',
+                    message: 'Error from Lambda',
                     error: error.response.data
                 });
             }
+
             return reply.code(500).send({
                 success: false,
-                message: 'Internal error fetching customer_id',
+                message: 'Internal error auditing policy',
                 error: error.message
             });
         }
