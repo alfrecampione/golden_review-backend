@@ -1,5 +1,6 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
+import { syncAndFindApplication } from '../services/applicationSyncService.js';
 
 // Controller for policies endpoints
 class PoliciesController {
