@@ -1,6 +1,7 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 import { syncAndFindApplication } from '../services/applicationSyncService.js';
+import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
 // Controller for policies endpoints
 class PoliciesController {
@@ -551,6 +552,7 @@ class PoliciesController {
 
             // Invoke Lambda
             const lambdaResult = await invokePdfLambda(s3Url);
+            console.log('[auditPolicy] Lambda result:', lambdaResult);
 
             // Return EXACT lambda JSON
             return reply.send(lambdaResult);
