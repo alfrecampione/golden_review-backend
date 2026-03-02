@@ -234,8 +234,8 @@ let jobStarted = false;
 export function startFilesFromPolicyLogsJob(onlyYesterday = true) {
     if (jobStarted) return;
 
-    // Run daily at 00:00 UTC
-    cron.schedule('0 0 * * *', () => {
+    // Run daily at 05:00 UTC
+    cron.schedule('0 5 * * *', () => {
         syncFilesFromPolicyLogs()
 
             .then(res => console.log('[filesFromPolicyLogsJob] Scheduled run result:', res))
