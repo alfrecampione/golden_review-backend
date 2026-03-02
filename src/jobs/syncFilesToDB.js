@@ -125,6 +125,34 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 continue;
             }
 
+            // Obtener carrier_id igual que en auditPolicy
+            let carrierId = null;
+            try {
+                const carrierResult = await prisma.$queryRaw`
+                    SELECT carrier_id
+                    FROM qq.policies
+                    WHERE customer_id = ${customerId}
+                    ORDER BY policy_id DESC
+                    LIMIT 1
+                `;
+                if (Array.isArray(carrierResult) && carrierResult.length > 0) {
+                    carrierId = Number(carrierResult[0].carrier_id);
+                }
+
+                const headCarrierRaw = await prisma.$queryRaw`
+                    SELECT head_carrier_id
+                    FROM intranet.head_carriers hc
+                    WHERE ${carrierId} IN (hc.carrier_id)
+                `;
+
+                const headCarrierId = headCarrierRaw[0]?.head_carrier_id;
+                if (headCarrierId) {
+                    carrierId = Number(headCarrierId);
+                }
+            } catch (carrierErr) {
+                console.error(`[syncFilesFromPolicyLogs] Error fetching carrier_id for customer ${customerId}:`, carrierErr);
+            }
+
             // d) Check or create UserApplication record
             let userApp = await prisma.userApplication.findUnique({
                 where: { customerId: customerId },
@@ -153,14 +181,6 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 });
             }
 
-            let carrier = applicationInfo.carrier;
-            if (!carrier || carrier.toLowerCase() !== 'progressive') {
-                console.log(`[syncFilesFromPolicyLogs] Carrier for customer ${customerId} is not Progressive or unknown, skipping Lambda invocation`);
-                processedCount++;
-                processedCustomerIds.push(customerId);
-                continue;
-            }
-
             // e) Get s3_url from qq.contact_files and invoke Lambda
             let lambdaResult;
             try {
@@ -170,7 +190,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 if (!s3Url) {
                     throw new Error(`No s3_url found for file_id ${fileId}`);
                 }
-                lambdaResult = await invokePdfLambda(s3Url);
+                lambdaResult = await invokePdfLambda(s3Url, carrierId);
                 console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, lambdaResult);
 
                 // await prisma.userApplication.update({

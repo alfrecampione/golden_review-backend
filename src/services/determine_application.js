@@ -112,8 +112,7 @@ export async function checkSingleFile(s3Url) {
         return {
             found: true,
             fileKey,
-            s3Url,
-            carrier: detectCarrierFromText(text)
+            s3Url
         };
     }
 
