@@ -556,7 +556,6 @@ class PoliciesController {
 
             // Invoke Lambda
             const lambdaResult = await invokePdfLambda(s3Url, carrierId);
-            console.log('[auditPolicy] Lambda result:', lambdaResult);
 
             // Return EXACT lambda JSON
             return reply.send(lambdaResult);
