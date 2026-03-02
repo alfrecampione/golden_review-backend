@@ -465,9 +465,9 @@ class PoliciesController {
                 });
             }
 
-            // Get customer_id from policy
+            // Get customer_id and carrier_id from policy
             const result = await prisma.$queryRaw`
-            SELECT customer_id
+            SELECT customer_id, carrier_id
             FROM qq.policies
             WHERE policy_id = ${policyId}
             LIMIT 1
@@ -476,6 +476,20 @@ class PoliciesController {
             const customerId = Array.isArray(result) && result.length > 0
                 ? Number(result[0].customer_id)
                 : null;
+            let carrierId = Array.isArray(result) && result.length > 0
+                ? Number(result[0].carrier_id)
+                : null;
+
+            const headCarrierRaw = await prisma.$queryRaw`
+                SELECT head_carrier_id
+                FROM intranet.head_carriers hc
+                WHERE ${carrierId} IN (hc.carrier_id)
+            `;
+
+            const headCarrierId = headCarrierRaw[0]?.head_carrier_id;
+            if (headCarrierId) {
+                carrierId = headCarrierId;
+            }
 
             if (!customerId) {
                 return reply.code(404).send({
@@ -521,23 +535,13 @@ class PoliciesController {
                 });
             }
 
-            // Validate carrier
-            const carrier = applicationInfo.carrier;
-
-            if (!carrier || carrier.toLowerCase() !== 'progressive') {
-                return reply.send({
-                    success: true,
-                    data: null
-                });
-            }
-
             // Get s3_url
             const fileRow = await prisma.$queryRaw`
             SELECT s3_url
             FROM qq.contact_files
             WHERE file_id = ${fileId}
             LIMIT 1
-        `;
+            `;
 
             const s3Url = Array.isArray(fileRow) && fileRow.length > 0
                 ? fileRow[0].s3_url
@@ -551,7 +555,7 @@ class PoliciesController {
             }
 
             // Invoke Lambda
-            const lambdaResult = await invokePdfLambda(s3Url);
+            const lambdaResult = await invokePdfLambda(s3Url, carrierId);
             console.log('[auditPolicy] Lambda result:', lambdaResult);
 
             // Return EXACT lambda JSON

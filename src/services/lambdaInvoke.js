@@ -19,10 +19,11 @@ function getLambdaClient() {
     });
 }
 
-export async function invokePdfLambda(s3Url) {
+export async function invokePdfLambda(s3Url, carrierId) {
     const client = getLambdaClient();
     const payload = {
         s3_url: s3Url,
+        carrier_id: carrierId,
     };
 
     const command = new InvokeCommand({
