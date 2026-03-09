@@ -3,6 +3,22 @@ import { Prisma } from '@prisma/client';
 import { syncAndFindApplication } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
+function extractFileId(applicationInfo) {
+    if (applicationInfo?.dbFile?.file_id) {
+        return String(applicationInfo.dbFile.file_id);
+    }
+    if (applicationInfo?.fileId) {
+        return String(applicationInfo.fileId);
+    }
+    if (applicationInfo?.file_id) {
+        return String(applicationInfo.file_id);
+    }
+    if (typeof applicationInfo === 'string') {
+        return applicationInfo;
+    }
+    return null;
+}
+
 // Controller for policies endpoints
 class PoliciesController {
 
@@ -505,33 +521,52 @@ class PoliciesController {
                 });
             }
 
-            // Sync + find application
-            const { applicationInfo } = await syncAndFindApplication(customerId);
+            // Reuse a previously processed application to avoid sync work when possible.
+            let userApp = await prisma.userApplication.findUnique({
+                where: { customerId: customerId },
+            });
 
-            if (!applicationInfo) {
-                return reply.send({
-                    success: true,
-                    data: null
-                });
-            }
+            let fileId = userApp?.isProcessed && userApp?.fileId
+                ? userApp.fileId
+                : null;
 
-            // Extract fileId (same logic as job)
-            let fileId = null;
+            if (!fileId) {
+                // Sync + find application only when there is no processed app cached.
+                const { applicationInfo } = await syncAndFindApplication(customerId);
 
-            if (applicationInfo.dbFile?.file_id) {
-                fileId = String(applicationInfo.dbFile.file_id);
-            } else if (applicationInfo.fileId) {
-                fileId = String(applicationInfo.fileId);
-            } else if (applicationInfo.file_id) {
-                fileId = String(applicationInfo.file_id);
-            } else if (typeof applicationInfo === 'string') {
-                fileId = applicationInfo;
+                if (!applicationInfo) {
+                    return reply.send({
+                        success: true,
+                        data: null
+                    });
+                }
+
+                fileId = extractFileId(applicationInfo);
             }
 
             if (!fileId) {
                 return reply.send({
                     success: true,
                     data: null
+                });
+            }
+
+            // Keep UserApplication in sync for future short-circuit checks.
+            if (!userApp) {
+                userApp = await prisma.userApplication.create({
+                    data: {
+                        customerId,
+                        fileId,
+                        isProcessed: false,
+                    },
+                });
+            } else if (userApp.fileId !== fileId) {
+                userApp = await prisma.userApplication.update({
+                    where: { id: userApp.id },
+                    data: {
+                        fileId,
+                        isProcessed: false,
+                    },
                 });
             }
 
@@ -556,6 +591,16 @@ class PoliciesController {
 
             // Invoke Lambda
             const lambdaResult = await invokePdfLambda(s3Url, carrierId);
+
+            if (!userApp.isProcessed || userApp.fileId !== fileId) {
+                await prisma.userApplication.update({
+                    where: { id: userApp.id },
+                    data: {
+                        fileId,
+                        // isProcessed: true,
+                    },
+                });
+            }
 
             // Return EXACT lambda JSON
             return reply.send(lambdaResult);

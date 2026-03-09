@@ -5,6 +5,22 @@ import { Prisma } from '@prisma/client';
 import { syncAndFindApplication } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
+function extractFileId(applicationInfo) {
+    if (applicationInfo?.dbFile?.file_id) {
+        return String(applicationInfo.dbFile.file_id);
+    }
+    if (applicationInfo?.fileId) {
+        return String(applicationInfo.fileId);
+    }
+    if (applicationInfo?.file_id) {
+        return String(applicationInfo.file_id);
+    }
+    if (typeof applicationInfo === 'string') {
+        return applicationInfo;
+    }
+    return null;
+}
+
 /**
  * Process all policy IDs logged in UpdatePolicyJobLog from the previous day.
  * For each associated customer:
@@ -97,28 +113,35 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 
     for (const customerId of uniqueCustomerIds) {
         try {
-            // a-c) Sync files, get files, and find application in one step
-            const { syncResult, applicationInfo } = await syncAndFindApplication(customerId);
-            console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} sync result:`, syncResult);
+            // Check UserApplication first to avoid expensive sync work for already processed customers.
+            let userApp = await prisma.userApplication.findUnique({
+                where: { customerId: customerId },
+            });
 
-            if (!applicationInfo) {
-                console.log(`[syncFilesFromPolicyLogs] No application file found for customer ${customerId}`);
+            if (userApp?.isProcessed && userApp.fileId) {
+                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} already processed, skipping`);
                 processedCount++;
                 processedCustomerIds.push(customerId);
                 continue;
             }
 
-            // Extraer file_id correctamente
-            let fileId = null;
-            if (applicationInfo.dbFile && applicationInfo.dbFile.file_id) {
-                fileId = String(applicationInfo.dbFile.file_id);
-            } else if (applicationInfo.fileId) {
-                fileId = String(applicationInfo.fileId);
-            } else if (applicationInfo.file_id) {
-                fileId = String(applicationInfo.file_id);
-            } else if (typeof applicationInfo === 'string') {
-                fileId = applicationInfo;
+            let fileId = userApp?.fileId || null;
+
+            if (!fileId) {
+                // a-c) Sync files, get files, and find application in one step only when needed.
+                const { syncResult, applicationInfo } = await syncAndFindApplication(customerId);
+                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} sync result:`, syncResult);
+
+                if (!applicationInfo) {
+                    console.log(`[syncFilesFromPolicyLogs] No application file found for customer ${customerId}`);
+                    processedCount++;
+                    processedCustomerIds.push(customerId);
+                    continue;
+                }
+
+                fileId = extractFileId(applicationInfo);
             }
+
             if (!fileId) {
                 console.error(`[syncFilesFromPolicyLogs] No valid fileId found for customer ${customerId}`);
                 failedCount++;
@@ -154,10 +177,6 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
             }
 
             // d) Check or create UserApplication record
-            let userApp = await prisma.userApplication.findUnique({
-                where: { customerId: customerId },
-            });
-
             if (!userApp) {
                 userApp = await prisma.userApplication.create({
                     data: {
@@ -166,12 +185,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                         isProcessed: false,
                     },
                 });
-            } else if (userApp.isProcessed) {
-                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} already processed, skipping`);
-                processedCount++;
-                processedCustomerIds.push(customerId);
-                continue;
-            } else if (userApp.fileId !== fileId) {
+            } else if (userApp.fileId !== fileId || userApp.isProcessed) {
                 userApp = await prisma.userApplication.update({
                     where: { id: userApp.id },
                     data: {
