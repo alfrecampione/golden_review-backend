@@ -491,23 +491,28 @@ class PoliciesController {
                 return reply.code(404).send({ success: false, message: 'Policy not found' });
             }
 
+            // Only return the application file registered in UserApplication
+            const userApp = await prisma.userApplication.findUnique({
+                where: { customerId },
+            });
+
+            if (!userApp || !userApp.fileId) {
+                return { success: true, count: 0, data: [] };
+            }
+
             const files = await prisma.$queryRaw`
                 SELECT
                     file_id,
                     contact_id,
                     file_name_reported,
-                    content_type_reported,
-                    content_type_final,
                     size_reported,
                     size_final_bytes,
                     created_on,
                     modified_on,
-                    category,
-                    description,
                     s3_url
                 FROM qq.contact_files
-                WHERE contact_id = ${customerId}
-                ORDER BY created_on DESC
+                WHERE file_id = ${userApp.fileId}
+                LIMIT 1
             `;
 
             // Convert BigInt values to JSON-safe types
@@ -517,9 +522,8 @@ class PoliciesController {
                 contact_id: f.contact_id != null ? Number(f.contact_id) : null,
                 size_reported: f.size_reported != null ? Number(f.size_reported) : null,
                 size_final_bytes: f.size_final_bytes != null ? Number(f.size_final_bytes) : null,
+                type: 'Application',
             }));
-
-            console.log(`Fetched ${serializedFiles.length} files for policyId ${policyId} (customerId ${customerId})`);
 
             return {
                 success: true,
