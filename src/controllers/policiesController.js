@@ -510,10 +510,21 @@ class PoliciesController {
                 ORDER BY created_on DESC
             `;
 
+            // Convert BigInt values to JSON-safe types
+            const serializedFiles = files.map(f => ({
+                ...f,
+                file_id: f.file_id != null ? String(f.file_id) : null,
+                contact_id: f.contact_id != null ? Number(f.contact_id) : null,
+                size_reported: f.size_reported != null ? Number(f.size_reported) : null,
+                size_final_bytes: f.size_final_bytes != null ? Number(f.size_final_bytes) : null,
+            }));
+
+            console.log(`Fetched ${serializedFiles.length} files for policyId ${policyId} (customerId ${customerId})`);
+
             return {
                 success: true,
-                count: files.length,
-                data: files,
+                count: serializedFiles.length,
+                data: serializedFiles,
             };
         } catch (error) {
             console.error('Error fetching policy files:', error);
