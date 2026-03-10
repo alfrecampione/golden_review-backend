@@ -49,6 +49,7 @@ async function routes(fastify, options) {
     fastify.get('/policies/unassigned', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.getUnassignedPolicies);
     fastify.put('/policies/:policyId/assign', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.assignPolicy);
     fastify.get('/parse/policy/:policyId', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.auditPolicy);
+    fastify.get('/policies/:policyId/files', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyFiles);
     // 
 
     // Server health route

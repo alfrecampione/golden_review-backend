@@ -461,6 +461,70 @@ class PoliciesController {
         }
     }
 
+    static async getPolicyFiles(request, reply) {
+        try {
+            let { policyId } = request.params;
+
+            if (!policyId) {
+                return reply.code(400).send({ success: false, message: 'policyId is required' });
+            }
+
+            policyId = Number(policyId);
+
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({ success: false, message: 'policyId must be an integer' });
+            }
+
+            // Get customer_id (contact_id) from the policy
+            const result = await prisma.$queryRaw`
+                SELECT customer_id
+                FROM qq.policies
+                WHERE policy_id = ${policyId}
+                LIMIT 1
+            `;
+
+            const customerId = Array.isArray(result) && result.length > 0
+                ? Number(result[0].customer_id)
+                : null;
+
+            if (!customerId) {
+                return reply.code(404).send({ success: false, message: 'Policy not found' });
+            }
+
+            const files = await prisma.$queryRaw`
+                SELECT
+                    file_id,
+                    contact_id,
+                    file_name_reported,
+                    content_type_reported,
+                    content_type_final,
+                    size_reported,
+                    size_final_bytes,
+                    created_on,
+                    modified_on,
+                    category,
+                    description,
+                    s3_url
+                FROM qq.contact_files
+                WHERE contact_id = ${customerId}
+                ORDER BY created_on DESC
+            `;
+
+            return {
+                success: true,
+                count: files.length,
+                data: files,
+            };
+        } catch (error) {
+            console.error('Error fetching policy files:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error fetching policy files',
+                error: error.message,
+            });
+        }
+    }
+
     static async auditPolicy(request, reply) {
         try {
             let { policyId } = request.params;
