@@ -540,6 +540,82 @@ class PoliciesController {
         }
     }
 
+    static async getPolicyDetails(request, reply) {
+        try {
+            let { policyId } = request.params;
+
+            if (!policyId) {
+                return reply.code(400).send({ success: false, message: 'policyId is required' });
+            }
+
+            policyId = Number(policyId);
+
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({ success: false, message: 'policyId must be an integer' });
+            }
+
+            const result = await prisma.$queryRaw`
+                SELECT 
+                    p.policy_id,
+                    p.policy_number,
+                    c.display_name as insured_name,
+                    c1.display_name as carrier,
+                    p.effective_date,
+                    p.exp_date,
+                    p.binder_date,
+                    p.premium,
+                    c2.display_name as csr,
+                    lob.display_name as lob,
+                    p.business_type,
+                    c3.display_name as mga,
+                    p.policy_status
+                FROM qq.policies p
+                INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
+                INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
+                INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
+                LEFT JOIN admin.lob lob ON lob.lob_id = p.lob_id
+                LEFT JOIN qq.contacts c3 ON c3.entity_id = p.mga_id
+                WHERE p.policy_id = ${policyId}
+                LIMIT 1
+            `;
+
+            if (!result || result.length === 0) {
+                return reply.code(404).send({ success: false, message: 'Policy not found' });
+            }
+
+            const p = result[0];
+
+            const businessTypeMap = { N: 'New', R: 'Renewal' };
+            const statusMap = { A: 'Active', C: 'Cancelled', D: 'Deleted', E: 'Expired', P: 'Pending', V: 'Void' };
+
+            return {
+                success: true,
+                data: {
+                    policy_id: p.policy_id != null ? String(p.policy_id) : null,
+                    policy_number: p.policy_number || null,
+                    insured_name: p.insured_name || null,
+                    carrier: p.carrier || null,
+                    effective_date: p.effective_date || null,
+                    exp_date: p.exp_date || null,
+                    binder_date: p.binder_date || null,
+                    premium: p.premium != null ? Number(p.premium) : null,
+                    csr: p.csr || null,
+                    lob: p.lob || null,
+                    business_type: businessTypeMap[p.business_type] || p.business_type || null,
+                    mga: p.mga || null,
+                    status: statusMap[p.policy_status] || p.policy_status || null,
+                },
+            };
+        } catch (error) {
+            console.error('Error fetching policy details:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error fetching policy details',
+                error: error.message,
+            });
+        }
+    }
+
     static async auditPolicy(request, reply) {
         try {
             let { policyId } = request.params;
