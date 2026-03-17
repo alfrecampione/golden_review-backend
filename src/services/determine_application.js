@@ -6,6 +6,46 @@ import { PDFParse } from 'pdf-parse';
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const BUCKET = process.env.AWS_S3_BUCKET;
 
+const BASE_APPLICATION_KEYWORDS = ['application for insurance'];
+const CARRIER_FLOW_BY_ID = {
+    // Initial mapping: carrier 2 should use Progressive flow.
+    '2': 'progressive',
+};
+
+const FLOW_REQUIRED_KEYWORDS = {
+    progressive: ['progressiveagent'],
+};
+
+function parseKeywordsByCarrierFromEnv() {
+    const raw = process.env.APPLICATION_KEYWORDS_BY_CARRIER;
+    if (!raw) return {};
+
+    try {
+        const parsed = JSON.parse(raw);
+        const entries = Object.entries(parsed || {});
+        const normalized = {};
+
+        for (const [carrierId, keywords] of entries) {
+            if (!Array.isArray(keywords)) continue;
+            normalized[String(carrierId)] = keywords
+                .map((k) => String(k || '').toLowerCase().trim())
+                .filter(Boolean);
+        }
+
+        return normalized;
+    } catch (err) {
+        console.error('[determine_application] Invalid APPLICATION_KEYWORDS_BY_CARRIER JSON:', err);
+        return {};
+    }
+}
+
+const KEYWORDS_BY_CARRIER = parseKeywordsByCarrierFromEnv();
+
+function resolveCarrierFlow(carrierId) {
+    if (carrierId == null) return null;
+    return CARRIER_FLOW_BY_ID[String(carrierId)] || null;
+}
+
 function streamToBuffer(stream) {
     return new Promise((resolve, reject) => {
         const chunks = [];
@@ -33,7 +73,30 @@ function detectCarrierFromText(text) {
     return null;
 }
 
-export async function determineApplication(customerId) {
+function buildRequiredKeywords(options = {}) {
+    const carrierId = options?.carrierId != null ? String(options.carrierId) : null;
+    const flow = resolveCarrierFlow(carrierId);
+    const flowKeywords = flow ? (FLOW_REQUIRED_KEYWORDS[flow] || []) : [];
+    const carrierKeywords = carrierId ? (KEYWORDS_BY_CARRIER[carrierId] || []) : [];
+    const explicitKeywords = Array.isArray(options?.requiredKeywords)
+        ? options.requiredKeywords
+        : [];
+
+    return [...new Set([
+        ...BASE_APPLICATION_KEYWORDS,
+        ...flowKeywords,
+        ...carrierKeywords,
+        ...explicitKeywords
+            .map((k) => String(k || '').toLowerCase().trim())
+            .filter(Boolean),
+    ])];
+}
+
+function matchesAllKeywords(text, requiredKeywords) {
+    return requiredKeywords.every((keyword) => text.includes(keyword));
+}
+
+export async function determineApplication(customerId, options = {}) {
 
     if (!customerId) throw new Error('customerId es requerido');
     if (!BUCKET) throw new Error('AWS_S3_BUCKET no configurado');
@@ -56,6 +119,8 @@ export async function determineApplication(customerId) {
         return { found: false };
     }
 
+    const requiredKeywords = buildRequiredKeywords(options);
+
     for (const file of pdfs) {
 
         const fileObj = await s3.send(
@@ -68,7 +133,7 @@ export async function determineApplication(customerId) {
         const buffer = await streamToBuffer(fileObj.Body);
         const text = await extractText(buffer);
 
-        if (text.includes('application for insurance')) {
+        if (matchesAllKeywords(text, requiredKeywords)) {
 
             const carrier = detectCarrierFromText(text);
 
@@ -87,7 +152,7 @@ export async function determineApplication(customerId) {
     return { found: false };
 }
 
-export async function checkSingleFile(s3Url) {
+export async function checkSingleFile(s3Url, options = {}) {
 
     if (!s3Url) return { found: false };
     if (!BUCKET) throw new Error('AWS_S3_BUCKET no configurado');
@@ -107,12 +172,15 @@ export async function checkSingleFile(s3Url) {
     const buffer = await streamToBuffer(fileObj.Body);
     const text = await extractText(buffer);
 
-    if (text.includes('application for insurance')) {
+    const requiredKeywords = buildRequiredKeywords(options);
+
+    if (matchesAllKeywords(text, requiredKeywords)) {
 
         return {
             found: true,
             fileKey,
-            s3Url
+            s3Url,
+            matchedKeywords: requiredKeywords,
         };
     }
 

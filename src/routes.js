@@ -50,6 +50,7 @@ async function routes(fastify, options) {
     fastify.put('/policies/:policyId/assign', { preHandler: [requireAuth, requireMinimumRole('Manager')] }, PoliciesController.assignPolicy);
     fastify.get('/parse/policy/:policyId', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.auditPolicy);
     fastify.get('/policies/:policyId/files', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyFiles);
+    fastify.get('/policies/:policyId/files/:fileId/download', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getFileDownloadUrl);
     fastify.get('/policies/:policyId/details', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyDetails);
     // 
 

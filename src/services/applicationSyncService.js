@@ -15,12 +15,12 @@ export async function getFilesForCustomer(customerId) {
 /**
  * Find most recent application in DB files
  */
-export async function findApplicationInFiles(files) {
+export async function findApplicationInFiles(files, detectionOptions = {}) {
     const foundApps = [];
     for (const file of files) {
         if (file.s3_url && file.file_name_reported.endsWith('pdf')) {
             try {
-                const result = await checkSingleFile(file.s3_url);
+                const result = await checkSingleFile(file.s3_url, detectionOptions);
                 if (result && result.found) {
                     foundApps.push({
                         ...result,
@@ -47,9 +47,9 @@ export async function findApplicationInFiles(files) {
 /**
  * Sync files for a customer and find application file
  */
-export async function syncAndFindApplication(customerId) {
+export async function syncAndFindApplication(customerId, detectionOptions = {}) {
     const syncResult = await downloadFilesToDB(customerId);
     const dbFiles = await getFilesForCustomer(customerId);
-    const applicationInfo = await findApplicationInFiles(dbFiles);
+    const applicationInfo = await findApplicationInFiles(dbFiles, detectionOptions);
     return { syncResult, dbFiles, applicationInfo };
 }

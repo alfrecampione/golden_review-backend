@@ -1,7 +1,11 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
+import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { syncAndFindApplication } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
+
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 function extractFileId(applicationInfo) {
     if (applicationInfo?.dbFile?.file_id) {
@@ -515,13 +519,12 @@ class PoliciesController {
                 LIMIT 1
             `;
 
-            // Convert BigInt values to JSON-safe types
+            // Convert BigInt values to JSON-safe types; omit raw fields not shown in UI
             const serializedFiles = files.map(f => ({
-                ...f,
                 file_id: f.file_id != null ? String(f.file_id) : null,
                 contact_id: f.contact_id != null ? Number(f.contact_id) : null,
-                size_reported: f.size_reported != null ? Number(f.size_reported) : null,
-                size_final_bytes: f.size_final_bytes != null ? Number(f.size_final_bytes) : null,
+                created_on: f.created_on || null,
+                modified_on: f.modified_on || null,
                 type: 'Application',
             }));
 
@@ -568,7 +571,8 @@ class PoliciesController {
                     lob.display_name as lob,
                     p.business_type,
                     c3.display_name as mga,
-                    p.policy_status
+                    p.policy_status,
+                    p.customer_id
                 FROM qq.policies p
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
@@ -584,6 +588,16 @@ class PoliciesController {
             }
 
             const p = result[0];
+            const customerId = p.customer_id != null ? Number(p.customer_id) : null;
+
+            let applicationIsProcessed = false;
+            if (customerId && !Number.isNaN(customerId)) {
+                const userApp = await prisma.userApplication.findUnique({
+                    where: { customerId },
+                    select: { isProcessed: true },
+                });
+                applicationIsProcessed = Boolean(userApp?.isProcessed);
+            }
 
             const businessTypeMap = { N: 'New', R: 'Renewal' };
             const statusMap = { A: 'Active', C: 'Cancelled', D: 'Deleted', E: 'Expired', P: 'Pending', V: 'Void' };
@@ -604,6 +618,7 @@ class PoliciesController {
                     business_type: businessTypeMap[p.business_type] || p.business_type || null,
                     mga: p.mga || null,
                     status: statusMap[p.policy_status] || p.policy_status || null,
+                    application_is_processed: applicationIsProcessed,
                 },
             };
         } catch (error) {
@@ -687,7 +702,9 @@ class PoliciesController {
 
             if (!fileId) {
                 // Sync + find application only when there is no processed app cached.
-                const { applicationInfo } = await syncAndFindApplication(customerId);
+                const { applicationInfo } = await syncAndFindApplication(customerId, {
+                    carrierId,
+                });
 
                 if (!applicationInfo) {
                     return reply.send({
@@ -775,6 +792,82 @@ class PoliciesController {
                 success: false,
                 message: 'Internal error auditing policy',
                 error: error.message
+            });
+        }
+    }
+
+    static async getFileDownloadUrl(request, reply) {
+        try {
+            let { policyId, fileId } = request.params;
+
+            policyId = Number(policyId);
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({ success: false, message: 'policyId must be an integer' });
+            }
+
+            if (!fileId) {
+                return reply.code(400).send({ success: false, message: 'fileId is required' });
+            }
+
+            // Verify the file belongs to this policy (security check)
+            const policyResult = await prisma.$queryRaw`
+                SELECT customer_id FROM qq.policies WHERE policy_id = ${policyId} LIMIT 1
+            `;
+
+            if (!policyResult?.length) {
+                return reply.code(404).send({ success: false, message: 'Policy not found' });
+            }
+
+            const customerId = Number(policyResult[0].customer_id);
+            const userApp = await prisma.userApplication.findUnique({
+                where: { customerId },
+            });
+
+            if (!userApp || String(userApp.fileId) !== String(fileId)) {
+                return reply.code(403).send({ success: false, message: 'File not accessible for this policy' });
+            }
+
+            // Fetch the s3_url and original filename
+            const fileRow = await prisma.$queryRaw`
+                SELECT s3_url, file_name_reported
+                FROM qq.contact_files
+                WHERE file_id = ${fileId}
+                LIMIT 1
+            `;
+
+            if (!fileRow?.length || !fileRow[0].s3_url) {
+                return reply.code(404).send({ success: false, message: 'File not found in S3' });
+            }
+
+            const s3Url = fileRow[0].s3_url;
+            const fileName = fileRow[0].file_name_reported || 'document';
+
+            // Extract S3 key from the stored URL (format: https://BUCKET.s3.REGION.amazonaws.com/KEY)
+            const urlObj = new URL(s3Url);
+            const key = urlObj.pathname.slice(1); // Remove leading '/'
+            const bucket = process.env.AWS_S3_BUCKET;
+
+            if (!bucket) {
+                return reply.code(500).send({ success: false, message: 'S3 bucket not configured' });
+            }
+
+            // Generate a presigned URL valid for 60 seconds, forcing download with original filename
+            const command = new GetObjectCommand({
+                Bucket: bucket,
+                Key: key,
+                ResponseContentDisposition: `attachment; filename="${fileName.replace(/"/g, '')}"`,
+            });
+
+            const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 60 });
+
+            return { success: true, url: presignedUrl };
+
+        } catch (error) {
+            console.error('Error generating download URL:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error generating download URL',
+                error: error.message,
             });
         }
     }
