@@ -2,6 +2,31 @@ import { downloadFilesToDB } from './contactFilesService.js';
 import { checkSingleFile } from './determine_application.js';
 import prisma from '../prisma.js';
 
+export async function getStoredJsonForCustomer(customerId) {
+    if (!customerId) return null;
+
+    return prisma.tempJSONStorage.findUnique({
+        where: { customerId: Number(customerId) },
+    });
+}
+
+export async function saveJsonForCustomer(customerId, data) {
+    if (!customerId) {
+        throw new Error('customerId es requerido para guardar el JSON temporal');
+    }
+
+    return prisma.tempJSONStorage.upsert({
+        where: { customerId: Number(customerId) },
+        create: {
+            customerId: Number(customerId),
+            data,
+        },
+        update: {
+            data,
+        },
+    });
+}
+
 /**
  * Get all files for a customer from DB
  */
@@ -48,8 +73,26 @@ export async function findApplicationInFiles(files, detectionOptions = {}) {
  * Sync files for a customer and find application file
  */
 export async function syncAndFindApplication(customerId, detectionOptions = {}) {
+    const storedJson = await getStoredJsonForCustomer(customerId);
+
+    if (storedJson?.data) {
+        return {
+            syncResult: null,
+            dbFiles: [],
+            applicationInfo: null,
+            cachedJson: storedJson.data,
+            skippedDetection: true,
+        };
+    }
+
     const syncResult = await downloadFilesToDB(customerId);
     const dbFiles = await getFilesForCustomer(customerId);
     const applicationInfo = await findApplicationInFiles(dbFiles, detectionOptions);
-    return { syncResult, dbFiles, applicationInfo };
+    return {
+        syncResult,
+        dbFiles,
+        applicationInfo,
+        cachedJson: null,
+        skippedDetection: false,
+    };
 }

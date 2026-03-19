@@ -2,7 +2,11 @@
 import cron from 'node-cron';
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import { syncAndFindApplication } from '../services/applicationSyncService.js';
+import {
+    getStoredJsonForCustomer,
+    saveJsonForCustomer,
+    syncAndFindApplication,
+} from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
 function extractFileId(applicationInfo) {
@@ -113,6 +117,14 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 
     for (const customerId of uniqueCustomerIds) {
         try {
+            const storedJson = await getStoredJsonForCustomer(customerId);
+            if (storedJson?.data) {
+                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} already has cached JSON, skipping`);
+                processedCount++;
+                processedCustomerIds.push(customerId);
+                continue;
+            }
+
             // Resolve carrier before file detection so keyword matching can be carrier-specific.
             let carrierId = null;
             try {
@@ -207,6 +219,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                     throw new Error(`No s3_url found for file_id ${fileId}`);
                 }
                 lambdaResult = await invokePdfLambda(s3Url, carrierId);
+                await saveJsonForCustomer(customerId, lambdaResult);
                 console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, lambdaResult);
 
                 // await prisma.userApplication.update({

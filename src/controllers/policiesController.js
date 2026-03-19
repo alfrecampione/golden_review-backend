@@ -2,7 +2,11 @@ import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { syncAndFindApplication } from '../services/applicationSyncService.js';
+import {
+    getStoredJsonForCustomer,
+    saveJsonForCustomer,
+    syncAndFindApplication,
+} from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -691,6 +695,11 @@ class PoliciesController {
                 });
             }
 
+            const storedJson = await getStoredJsonForCustomer(customerId);
+            if (storedJson?.data) {
+                return reply.send(storedJson.data);
+            }
+
             // Reuse a previously processed application to avoid sync work when possible.
             let userApp = await prisma.userApplication.findUnique({
                 where: { customerId: customerId },
@@ -763,6 +772,7 @@ class PoliciesController {
 
             // Invoke Lambda
             const lambdaResult = await invokePdfLambda(s3Url, carrierId);
+            await saveJsonForCustomer(customerId, lambdaResult);
 
             if (!userApp.isProcessed || userApp.fileId !== fileId) {
                 await prisma.userApplication.update({

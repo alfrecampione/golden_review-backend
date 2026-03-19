@@ -113,3 +113,13 @@ model UserApplication {
   @@map("user_application")
   @@schema("goldenaudit")
 }
+
+model TempJSONStorage {
+  id         String   @id @default(uuid())
+  customerId Int      @unique
+  data       Json     @db.Json
+  createdAt  DateTime @default(now())
+
+  @@map("temp_json_storage")
+  @@schema("goldenaudit")
+}
