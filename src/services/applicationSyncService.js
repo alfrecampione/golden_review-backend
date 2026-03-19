@@ -72,10 +72,11 @@ export async function findApplicationInFiles(files, detectionOptions = {}) {
 /**
  * Sync files for a customer and find application file
  */
-export async function syncAndFindApplication(customerId, detectionOptions = {}) {
+export async function syncAndFindApplication(customerId, detectionOptions = {}, options = {}) {
+    const { forceRefresh = false } = options;
     const storedJson = await getStoredJsonForCustomer(customerId);
 
-    if (storedJson?.data) {
+    if (!forceRefresh && storedJson?.data) {
         return {
             syncResult: null,
             dbFiles: [],

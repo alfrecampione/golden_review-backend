@@ -865,35 +865,21 @@ class PoliciesController {
                 });
             }
 
-            const storedJson = await getStoredJsonForCustomer(customerId);
-            if (storedJson?.data) {
-                return reply.send(storedJson.data);
-            }
+            // Always refresh on manual audit: sync files, detect application and recalculate JSON.
+            const { applicationInfo } = await syncAndFindApplication(
+                customerId,
+                { carrierId },
+                { forceRefresh: true }
+            );
 
-            // Reuse a previously processed application to avoid sync work when possible.
-            let userApp = await prisma.userApplication.findUnique({
-                where: { customerId: customerId },
-            });
-
-            let fileId = userApp?.isProcessed && userApp?.fileId
-                ? userApp.fileId
-                : null;
-
-            if (!fileId) {
-                // Sync + find application only when there is no processed app cached.
-                const { applicationInfo } = await syncAndFindApplication(customerId, {
-                    carrierId,
+            if (!applicationInfo) {
+                return reply.send({
+                    success: true,
+                    data: null
                 });
-
-                if (!applicationInfo) {
-                    return reply.send({
-                        success: true,
-                        data: null
-                    });
-                }
-
-                fileId = extractFileId(applicationInfo);
             }
+
+            const fileId = extractFileId(applicationInfo);
 
             if (!fileId) {
                 return reply.send({
@@ -901,6 +887,10 @@ class PoliciesController {
                     data: null
                 });
             }
+
+            let userApp = await prisma.userApplication.findUnique({
+                where: { customerId: customerId },
+            });
 
             // Keep UserApplication in sync for future short-circuit checks.
             if (!userApp) {
