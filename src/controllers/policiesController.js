@@ -27,6 +27,74 @@ function extractFileId(applicationInfo) {
     return null;
 }
 
+async function resolvePolicyContext(policyId) {
+    const result = await prisma.$queryRaw`
+        SELECT customer_id, carrier_id
+        FROM qq.policies
+        WHERE policy_id = ${policyId}
+        LIMIT 1
+    `;
+
+    if (!Array.isArray(result) || result.length === 0) {
+        return null;
+    }
+
+    const customerId = result[0].customer_id != null ? Number(result[0].customer_id) : null;
+    const carrierId = result[0].carrier_id != null ? Number(result[0].carrier_id) : null;
+
+    return {
+        customerId: customerId != null && !Number.isNaN(customerId) ? customerId : null,
+        carrierId: carrierId != null && !Number.isNaN(carrierId) ? carrierId : null,
+    };
+}
+
+function isEditableJsonPayload(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+async function getEditableJsonForCustomer(reply, customerId) {
+    if (!customerId || Number.isNaN(customerId)) {
+        return reply.code(404).send({ success: false, message: 'Contact not found' });
+    }
+
+    const storedJson = await getStoredJsonForCustomer(customerId);
+
+    if (!storedJson?.data || !isEditableJsonPayload(storedJson.data)) {
+        return reply.code(404).send({
+            success: false,
+            message: 'Temporary JSON not found for this contact',
+        });
+    }
+
+    return reply.send({
+        success: true,
+        customerId,
+        data: storedJson.data,
+    });
+}
+
+async function saveEditableJsonForCustomer(reply, customerId, payload) {
+    if (!customerId || Number.isNaN(customerId)) {
+        return reply.code(404).send({ success: false, message: 'Contact not found' });
+    }
+
+    if (!isEditableJsonPayload(payload)) {
+        return reply.code(400).send({
+            success: false,
+            message: 'data must be a JSON object',
+        });
+    }
+
+    const savedRecord = await saveJsonForCustomer(customerId, payload);
+
+    return reply.send({
+        success: true,
+        message: 'Temporary JSON saved successfully',
+        customerId,
+        data: savedRecord.data,
+    });
+}
+
 // Controller for policies endpoints
 class PoliciesController {
 
@@ -635,6 +703,118 @@ class PoliciesController {
         }
     }
 
+    static async getPolicyTemporaryJson(request, reply) {
+        try {
+            let { policyId } = request.params;
+
+            if (!policyId) {
+                return reply.code(400).send({ success: false, message: 'policyId is required' });
+            }
+
+            policyId = Number(policyId);
+
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({ success: false, message: 'policyId must be an integer' });
+            }
+
+            const policyContext = await resolvePolicyContext(policyId);
+
+            if (!policyContext?.customerId) {
+                return reply.code(404).send({ success: false, message: 'Policy not found' });
+            }
+
+            return getEditableJsonForCustomer(reply, policyContext.customerId);
+        } catch (error) {
+            console.error('Error fetching policy temporary JSON:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error fetching policy temporary JSON',
+                error: error.message,
+            });
+        }
+    }
+
+    static async savePolicyTemporaryJson(request, reply) {
+        try {
+            let { policyId } = request.params;
+
+            if (!policyId) {
+                return reply.code(400).send({ success: false, message: 'policyId is required' });
+            }
+
+            policyId = Number(policyId);
+
+            if (!Number.isInteger(policyId)) {
+                return reply.code(400).send({ success: false, message: 'policyId must be an integer' });
+            }
+
+            const policyContext = await resolvePolicyContext(policyId);
+
+            if (!policyContext?.customerId) {
+                return reply.code(404).send({ success: false, message: 'Policy not found' });
+            }
+
+            return saveEditableJsonForCustomer(reply, policyContext.customerId, request.body?.data);
+        } catch (error) {
+            console.error('Error saving policy temporary JSON:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error saving policy temporary JSON',
+                error: error.message,
+            });
+        }
+    }
+
+    static async getContactTemporaryJson(request, reply) {
+        try {
+            let { contactId } = request.params;
+
+            if (!contactId) {
+                return reply.code(400).send({ success: false, message: 'contactId is required' });
+            }
+
+            contactId = Number(contactId);
+
+            if (!Number.isInteger(contactId)) {
+                return reply.code(400).send({ success: false, message: 'contactId must be an integer' });
+            }
+
+            return getEditableJsonForCustomer(reply, contactId);
+        } catch (error) {
+            console.error('Error fetching contact temporary JSON:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error fetching contact temporary JSON',
+                error: error.message,
+            });
+        }
+    }
+
+    static async saveContactTemporaryJson(request, reply) {
+        try {
+            let { contactId } = request.params;
+
+            if (!contactId) {
+                return reply.code(400).send({ success: false, message: 'contactId is required' });
+            }
+
+            contactId = Number(contactId);
+
+            if (!Number.isInteger(contactId)) {
+                return reply.code(400).send({ success: false, message: 'contactId must be an integer' });
+            }
+
+            return saveEditableJsonForCustomer(reply, contactId, request.body?.data);
+        } catch (error) {
+            console.error('Error saving contact temporary JSON:', error);
+            return reply.code(500).send({
+                success: false,
+                message: 'Error saving contact temporary JSON',
+                error: error.message,
+            });
+        }
+    }
+
     static async auditPolicy(request, reply) {
         try {
             let { policyId } = request.params;
@@ -656,19 +836,9 @@ class PoliciesController {
             }
 
             // Get customer_id and carrier_id from policy
-            const result = await prisma.$queryRaw`
-            SELECT customer_id, carrier_id
-            FROM qq.policies
-            WHERE policy_id = ${policyId}
-            LIMIT 1
-        `;
-
-            const customerId = Array.isArray(result) && result.length > 0
-                ? Number(result[0].customer_id)
-                : null;
-            let carrierId = Array.isArray(result) && result.length > 0
-                ? Number(result[0].carrier_id)
-                : null;
+            const policyContext = await resolvePolicyContext(policyId);
+            const customerId = policyContext?.customerId ?? null;
+            let carrierId = policyContext?.carrierId ?? null;
 
             const headCarrierRaw = await prisma.$queryRaw`
                 SELECT head_carrier_id

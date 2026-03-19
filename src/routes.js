@@ -52,6 +52,10 @@ async function routes(fastify, options) {
     fastify.get('/policies/:policyId/files', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyFiles);
     fastify.get('/policies/:policyId/files/:fileId/download', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getFileDownloadUrl);
     fastify.get('/policies/:policyId/details', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyDetails);
+    fastify.get('/contacts/:contactId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getContactTemporaryJson);
+    fastify.post('/contacts/:contactId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.saveContactTemporaryJson);
+    fastify.get('/policies/:policyId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyTemporaryJson);
+    fastify.post('/policies/:policyId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.savePolicyTemporaryJson);
     // 
 
     // Server health route
