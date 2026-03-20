@@ -43,7 +43,7 @@ export async function getFilesForCustomer(customerId) {
 export async function findApplicationInFiles(files, detectionOptions = {}) {
     const foundApps = [];
     for (const file of files) {
-        if (file.s3_url && file.file_name_reported.endsWith('pdf')) {
+        if (file.s3_url && String(file.file_name_reported || '').toLowerCase().endsWith('.pdf')) {
             try {
                 const result = await checkSingleFile(file.s3_url, detectionOptions);
                 if (result && result.found) {
@@ -62,8 +62,8 @@ export async function findApplicationInFiles(files, detectionOptions = {}) {
         return null;
     }
     foundApps.sort((a, b) => {
-        const dateA = new Date(a.dbFile.inserted_at);
-        const dateB = new Date(b.dbFile.inserted_at);
+        const dateA = new Date(a.dbFile.created_on || a.dbFile.inserted_at || 0);
+        const dateB = new Date(b.dbFile.created_on || b.dbFile.inserted_at || 0);
         return dateB - dateA;
     });
     return foundApps[0];

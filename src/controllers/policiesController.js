@@ -31,7 +31,7 @@ function extractFileId(applicationInfo) {
 
 async function resolvePolicyContext(policyId) {
     const result = await prisma.$queryRaw`
-        SELECT customer_id, carrier_id
+        SELECT customer_id, carrier_id, policy_number
         FROM qq.policies
         WHERE policy_id = ${policyId}
         LIMIT 1
@@ -43,10 +43,12 @@ async function resolvePolicyContext(policyId) {
 
     const customerId = result[0].customer_id != null ? Number(result[0].customer_id) : null;
     const carrierId = result[0].carrier_id != null ? Number(result[0].carrier_id) : null;
+    const policyNumber = result[0].policy_number != null ? String(result[0].policy_number) : null;
 
     return {
         customerId: customerId != null && !Number.isNaN(customerId) ? customerId : null,
         carrierId: carrierId != null && !Number.isNaN(carrierId) ? carrierId : null,
+        policyNumber,
     };
 }
 
@@ -833,6 +835,7 @@ class PoliciesController {
             const policyContext = await resolvePolicyContext(policyId);
             const customerId = policyContext?.customerId ?? null;
             let carrierId = policyContext?.carrierId ?? null;
+            const policyNumber = policyContext?.policyNumber ?? null;
 
             const headCarrierRaw = await prisma.$queryRaw`
                 SELECT head_carrier_id
@@ -862,7 +865,7 @@ class PoliciesController {
             // Always refresh on manual audit: sync files, detect application and recalculate JSON.
             const { applicationInfo } = await syncAndFindApplication(
                 customerId,
-                { carrierId },
+                { carrierId, policyNumber },
                 { forceRefresh: true }
             );
 

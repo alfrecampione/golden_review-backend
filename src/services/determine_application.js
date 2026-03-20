@@ -96,6 +96,27 @@ function matchesAllKeywords(text, requiredKeywords) {
     return requiredKeywords.every((keyword) => text.includes(keyword));
 }
 
+function normalizePolicyNumber(value) {
+    return String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+}
+
+function matchesPolicyNumber(text, policyNumber) {
+    if (!policyNumber) {
+        return true;
+    }
+
+    const normalizedText = normalizePolicyNumber(text);
+    const normalizedPolicy = normalizePolicyNumber(policyNumber);
+
+    if (!normalizedPolicy) {
+        return true;
+    }
+
+    return normalizedText.includes(normalizedPolicy);
+}
+
 export async function determineApplication(customerId, options = {}) {
 
     if (!customerId) throw new Error('customerId es requerido');
@@ -173,14 +194,21 @@ export async function checkSingleFile(s3Url, options = {}) {
     const text = await extractText(buffer);
 
     const requiredKeywords = buildRequiredKeywords(options);
+    const policyNumber = options?.policyNumber != null
+        ? String(options.policyNumber)
+        : null;
 
     if (matchesAllKeywords(text, requiredKeywords)) {
+        if (!matchesPolicyNumber(text, policyNumber)) {
+            return { found: false };
+        }
 
         return {
             found: true,
             fileKey,
             s3Url,
             matchedKeywords: requiredKeywords,
+            matchedPolicyNumber: policyNumber,
         };
     }
 
