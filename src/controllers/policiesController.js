@@ -8,6 +8,8 @@ import {
     syncAndFindApplication,
 } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
+import { mapLambdaResultToPolicyJson } from '../lib/utils.js';
+import { buildPolicyWhereClause } from '../lib/policyQueryUtils.js';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -162,8 +164,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE p.business_type = 'N' 
-                    AND up."userId" IS NOT NULL
+                WHERE ${buildPolicyWhereClause({ businessType: 'N', assignment: 'assigned' })}
                     ${searchCondition}
                     ${userPolicyCondition}
             `);
@@ -192,8 +193,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE p.business_type = 'N' 
-                    AND up."userId" IS NOT NULL
+                WHERE ${buildPolicyWhereClause({ businessType: 'N', assignment: 'assigned' })}
                     ${searchCondition}
                     ${userPolicyCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
@@ -293,10 +293,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE p.business_type = 'R' 
-                    AND up."userId" IS NOT NULL
-                    AND p.policy_status IN ('A', 'C')
-                    AND p.carrier_id <> p1.carrier_id
+                WHERE ${buildPolicyWhereClause({ businessType: 'R', assignment: 'assigned', requireCarrierChange: true })}
                     ${searchCondition}
                     ${userPolicyCondition}
             `);
@@ -326,10 +323,7 @@ class PoliciesController {
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE p.business_type = 'R' 
-                    AND up."userId" IS NOT NULL
-                    AND p.policy_status IN ('A', 'C')
-                    AND p.carrier_id <> p1.carrier_id
+                WHERE ${buildPolicyWhereClause({ businessType: 'R', assignment: 'assigned', requireCarrierChange: true })}
                     ${searchCondition}
                     ${userPolicyCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
@@ -418,7 +412,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE up."userId" IS NULL
+                WHERE ${buildPolicyWhereClause({ assignment: 'unassigned' })}
                     ${searchCondition}
             `);
 
@@ -447,7 +441,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
-                WHERE up."userId" IS NULL
+                WHERE ${buildPolicyWhereClause({ assignment: 'unassigned' })}
                     ${searchCondition}
                 ORDER BY ${sortColumn} ${sortOrder}
                 LIMIT ${limit} OFFSET ${offset}
@@ -932,7 +926,9 @@ class PoliciesController {
 
             // Invoke Lambda
             const lambdaResult = await invokePdfLambda(s3Url, carrierId);
-            await saveJsonForCustomer(customerId, lambdaResult);
+            const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
+
+            await saveJsonForCustomer(customerId, mappedResult);
 
             if (!userApp.isProcessed || userApp.fileId !== fileId) {
                 await prisma.userApplication.update({
@@ -944,8 +940,7 @@ class PoliciesController {
                 });
             }
 
-            // Return EXACT lambda JSON
-            return reply.send(lambdaResult);
+            return reply.send(mappedResult);
 
         } catch (error) {
             console.error('Error auditing policy:', error);

@@ -1,6 +1,7 @@
 import cron from 'node-cron';
 import { Prisma } from '@prisma/client';
 import prisma from '../prisma.js';
+import { buildPolicySyncWhereClause } from '../lib/policyQueryUtils.js';
 
 async function syncPoliciesOnce() {
     // 0) Find last sync timestamp
@@ -16,11 +17,7 @@ async function syncPoliciesOnce() {
         FROM qq.policies p
         INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
         INNER JOIN qq.locations l ON l.location_id = c.location_id
-        WHERE p.policy_id IS NOT NULL
-          AND p.business_type = 'N'
-          AND p.binder_date >= '01/01/2026'
-          AND p.lob_id = 6
-          AND l.location_type = 1
+                WHERE ${Prisma.raw(buildPolicySyncWhereClause({ businessType: 'N' }))}
           ${since ? Prisma.sql`AND p.created_on > (${since} AT TIME ZONE 'UTC')` : Prisma.empty}
     `;
 
@@ -31,13 +28,7 @@ async function syncPoliciesOnce() {
         INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
         INNER JOIN qq.locations l ON l.location_id = c.location_id
         INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
-        WHERE p.policy_id IS NOT NULL
-          AND p.business_type = 'R'
-          AND p.policy_status IN ('A', 'C')
-          AND p.carrier_id <> p1.carrier_id
-          AND p.binder_date >= '01/01/2026'
-          AND p.lob_id = 6
-          AND l.location_type = 1
+                WHERE ${Prisma.raw(buildPolicySyncWhereClause({ businessType: 'R', requireCarrierChange: true }))}
           ${since ? Prisma.sql`AND p.created_on > (${since} AT TIME ZONE 'UTC')` : Prisma.empty}
     `;
 

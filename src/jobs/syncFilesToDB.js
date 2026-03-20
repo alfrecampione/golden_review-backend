@@ -8,6 +8,7 @@ import {
     syncAndFindApplication,
 } from '../services/applicationSyncService.js';
 import { invokePdfLambda } from '../services/lambdaInvoke.js';
+import { mapLambdaResultToPolicyJson } from '../lib/utils.js';
 
 function extractFileId(applicationInfo) {
     if (applicationInfo?.dbFile?.file_id) {
@@ -219,8 +220,9 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                     throw new Error(`No s3_url found for file_id ${fileId}`);
                 }
                 lambdaResult = await invokePdfLambda(s3Url, carrierId);
-                await saveJsonForCustomer(customerId, lambdaResult);
-                console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, lambdaResult);
+                const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
+                await saveJsonForCustomer(customerId, mappedResult);
+                console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, mappedResult);
 
                 // await prisma.userApplication.update({
                 //     where: { id: userApp.id },
