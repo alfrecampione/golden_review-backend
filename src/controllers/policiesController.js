@@ -667,7 +667,7 @@ class PoliciesController {
                 applicationIsProcessed = Boolean(userApp?.isProcessed);
             }
 
-            const businessTypeMap = { N: 'New', R: 'Renewal' };
+            const businessTypeMap = { N: 'New Business', R: 'Renewal', };
             const statusMap = { A: 'Active', C: 'Cancelled', D: 'Deleted', E: 'Expired', P: 'Pending', V: 'Void' };
 
             return {

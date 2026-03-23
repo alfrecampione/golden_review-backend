@@ -86,6 +86,130 @@ function normalizePolicyPeriod(policyPeriod) {
     };
 }
 
+function normalizeInsuranceCompanyName(name) {
+    if (!name || typeof name !== 'string') {
+        return null;
+    }
+    return name.split('PO Box')[0].trim();
+}
+
+function normalizeWhitespace(value) {
+    return value.replace(/\s+/g, ' ').trim();
+}
+
+function collectDriverNames(drivers) {
+    if (!Array.isArray(drivers)) {
+        return [];
+    }
+
+    const names = new Set();
+
+    drivers.forEach(driver => {
+        if (!driver || typeof driver !== 'object') {
+            return;
+        }
+
+        const firstName = typeof driver.first_name === 'string' ? normalizeWhitespace(driver.first_name) : '';
+        const lastName = typeof driver.last_name === 'string' ? normalizeWhitespace(driver.last_name) : '';
+        if (firstName && lastName) {
+            names.add(`${firstName} ${lastName}`);
+        }
+
+        Object.entries(driver).forEach(([key, value]) => {
+            if (typeof value !== 'string') {
+                return;
+            }
+
+            const lowerKey = key.toLowerCase();
+            const isNameField = lowerKey.includes('name') && !lowerKey.includes('address');
+            if (!isNameField) {
+                return;
+            }
+
+            const normalizedValue = normalizeWhitespace(value);
+            if (normalizedValue.length >= 3) {
+                names.add(normalizedValue);
+            }
+        });
+    });
+
+    return Array.from(names);
+}
+
+function getRawInsuredText(policy) {
+    if (!policy || typeof policy !== 'object') {
+        return null;
+    }
+
+    const directCandidates = [
+        policy.name_insured,
+        policy.named_insured,
+        policy.insured_name,
+        policy.name_and_address,
+    ];
+
+    const directMatch = directCandidates.find(candidate => typeof candidate === 'string' && candidate.trim());
+    if (directMatch) {
+        return directMatch;
+    }
+
+    const dynamicKeyMatch = Object.entries(policy).find(([key, value]) => {
+        if (typeof value !== 'string') {
+            return false;
+        }
+
+        const normalizedKey = key.toLowerCase().replace(/[_\s-]+/g, '');
+        return normalizedKey === 'nameinsured' || normalizedKey === 'namedinsured';
+    });
+
+    return dynamicKeyMatch ? dynamicKeyMatch[1] : null;
+}
+
+function splitInsuredNameAndAddress(rawInsuredText, drivers) {
+    if (!rawInsuredText || typeof rawInsuredText !== 'string') {
+        return {
+            nameInsured: null,
+            insuredAddress: null,
+        };
+    }
+
+    const cleanedInsuredText = normalizeWhitespace(
+        rawInsuredText
+            .replace(/^(named?\s+insured)\s*[:\-]?\s*/i, '')
+    );
+
+    if (!cleanedInsuredText) {
+        return {
+            nameInsured: null,
+            insuredAddress: null,
+        };
+    }
+
+    const driverNames = collectDriverNames(drivers)
+        .sort((a, b) => b.length - a.length);
+
+    const lowerInsuredText = cleanedInsuredText.toLowerCase();
+    const matchedName = driverNames.find(driverName => lowerInsuredText.startsWith(driverName.toLowerCase()));
+
+    if (!matchedName) {
+        return {
+            nameInsured: cleanedInsuredText,
+            insuredAddress: null,
+        };
+    }
+
+    const nameInsured = cleanedInsuredText.slice(0, matchedName.length).trim().replace(/[,-]+$/, '').trim();
+    const addressPart = cleanedInsuredText
+        .slice(matchedName.length)
+        .replace(/^[,\-:\s]+/, '')
+        .trim();
+
+    return {
+        nameInsured: nameInsured || null,
+        insuredAddress: addressPart || null,
+    };
+}
+
 export function mapLambdaResultToPolicyJson(lambdaResult) {
     const policy = lambdaResult?.policy || {};
     const drivers = lambdaResult?.drivers || [];
@@ -96,9 +220,14 @@ export function mapLambdaResultToPolicyJson(lambdaResult) {
     function mapPolicy(policy) {
         const policyPeriod = policy.policy_period || null;
         const { effectiveDate, expirationDate } = normalizePolicyPeriod(policyPeriod);
+        const insuranceCompany = normalizeInsuranceCompanyName(policy.insurance_company);
+        const rawInsuredText = getRawInsuredText(policy);
+        const { nameInsured, insuredAddress } = splitInsuredNameAndAddress(rawInsuredText, drivers);
         return {
             policy_number: policy.policy_number || null,
-            insurance_company: policy.insurance_company || null,
+            insurance_company: insuranceCompany,
+            name_insured: nameInsured,
+            insured_address: insuredAddress,
             effective_date: effectiveDate,
             expiration_date: expirationDate,
             effective_date_and_time: normalizeUsDateTime(policy.effective_date_and_time),
