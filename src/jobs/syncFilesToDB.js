@@ -134,7 +134,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 const headCarrierRaw = await prisma.$queryRaw`
                     SELECT head_carrier_id
                     FROM intranet.head_carriers hc
-                    WHERE ${carrierId} IN (hc.contact_id)
+                    WHERE ${carrierId} = ANY(hc.contact_id)
                 `;
 
                 const headCarrierId = headCarrierRaw[0]?.head_carrier_id;
