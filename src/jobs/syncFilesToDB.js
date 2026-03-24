@@ -239,22 +239,26 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 let jobStarted = false;
 
 export function startFilesFromPolicyLogsJob(onlyYesterday = true, runOnStartup = true) {
-    if (jobStarted) return;
+    if (jobStarted) {
+        console.log('[filesFromPolicyLogsJob] already started, skipping new scheduler registration');
+        return;
+    }
+
+    console.log(`[filesFromPolicyLogsJob] starting... onlyYesterday=${onlyYesterday} runOnStartup=${runOnStartup}`);
 
     // Run daily at 05:00 UTC
     cron.schedule('0 5 * * *', () => {
         syncFilesFromPolicyLogs(onlyYesterday)
-
             .then(res => console.log('[filesFromPolicyLogsJob] Scheduled run result:', res))
             .catch(err => console.error('[filesFromPolicyLogsJob] Scheduled run failed:', err));
     });
-
-    console.log('[filesFromPolicyLogsJob] starting...');
 
     if (runOnStartup) {
         syncFilesFromPolicyLogs(onlyYesterday)
             .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
             .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
+    } else {
+        console.log('[filesFromPolicyLogsJob] initial run skipped because runOnStartup=false');
     }
 
     jobStarted = true;
