@@ -32,7 +32,6 @@ function extractFileId(applicationInfo) {
  *  - Sync files to S3/DB
  *  - Find the most recent application file
  *  - Store in UserApplication and invoke Lambda to extract data
- *  - Mark as processed on success
  */
 /**
  * @param {boolean} [onlyYesterday=true] Si true, procesa solo los logs de ayer; si false, procesa toda la tabla
@@ -118,14 +117,6 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 
     for (const customerId of uniqueCustomerIds) {
         try {
-            const storedJson = await getStoredJsonForCustomer(customerId);
-            if (storedJson?.data) {
-                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} already has cached JSON, skipping`);
-                processedCount++;
-                processedCustomerIds.push(customerId);
-                continue;
-            }
-
             // Resolve carrier before file detection so keyword matching can be carrier-specific.
             let carrierId = null;
             try {
@@ -154,17 +145,10 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 console.error(`[syncFilesFromPolicyLogs] Error fetching carrier_id for customer ${customerId}:`, carrierErr);
             }
 
-            // Check UserApplication first to avoid expensive sync work for already processed customers.
             let userApp = await prisma.userApplication.findUnique({
                 where: { customerId: customerId },
             });
 
-            if (userApp?.isProcessed && userApp.fileId) {
-                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} already processed, skipping`);
-                processedCount++;
-                processedCustomerIds.push(customerId);
-                continue;
-            }
 
             let fileId = userApp?.fileId || null;
 
@@ -197,15 +181,13 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                     data: {
                         customerId: customerId,
                         fileId: fileId,
-                        isProcessed: false,
                     },
                 });
-            } else if (userApp.fileId !== fileId || userApp.isProcessed) {
+            } else if (userApp.fileId !== fileId) {
                 userApp = await prisma.userApplication.update({
                     where: { id: userApp.id },
                     data: {
                         fileId: fileId,
-                        isProcessed: false,
                     },
                 });
             }
@@ -223,11 +205,6 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
                 await saveJsonForCustomer(customerId, mappedResult);
                 console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, mappedResult);
-
-                // await prisma.userApplication.update({
-                //     where: { id: userApp.id },
-                //     data: { isProcessed: true },
-                // });
 
                 processedCount++;
                 processedCustomerIds.push(customerId);
@@ -262,22 +239,24 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 
 let jobStarted = false;
 
-export function startFilesFromPolicyLogsJob(onlyYesterday = true) {
+export function startFilesFromPolicyLogsJob(onlyYesterday = true, runOnStartup = true) {
     if (jobStarted) return;
 
     // Run daily at 05:00 UTC
     cron.schedule('0 5 * * *', () => {
-        syncFilesFromPolicyLogs()
+        syncFilesFromPolicyLogs(onlyYesterday)
 
             .then(res => console.log('[filesFromPolicyLogsJob] Scheduled run result:', res))
             .catch(err => console.error('[filesFromPolicyLogsJob] Scheduled run failed:', err));
     });
 
     console.log('[filesFromPolicyLogsJob] starting...');
-    // Optionally run once at startup (process previous day immediately)
-    // syncFilesFromPolicyLogs({ onlyYesterday })
-    //     .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
-    //     .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
+
+    if (runOnStartup) {
+        syncFilesFromPolicyLogs(onlyYesterday)
+            .then(res => console.log('[filesFromPolicyLogsJob] Initial run result:', res))
+            .catch(err => console.error('[filesFromPolicyLogsJob] Initial run failed:', err));
+    }
 
     jobStarted = true;
 }
