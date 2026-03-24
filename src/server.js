@@ -101,8 +101,8 @@ fastify.register(routes);
 // Schedule background jobs
 startUserSyncJob();
 startPoliciesSyncJob();
-onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
-runOnStartup = process.env.RUN_ON_STARTUP ? process.env.RUN_ON_STARTUP === 'true' : false;
+const onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
+const runOnStartup = process.env.RUN_ON_STARTUP ? process.env.RUN_ON_STARTUP === 'true' : false;
 startFilesFromPolicyLogsJob(onlyYesterday, runOnStartup);
 
 // Function to start the server
