@@ -204,7 +204,6 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 lambdaResult = await invokePdfLambda(s3Url, carrierId);
                 const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
                 await saveJsonForCustomer(customerId, mappedResult);
-                console.log(`[syncFilesFromPolicyLogs] Lambda success for customer ${customerId}:`, mappedResult);
 
                 processedCount++;
                 processedCustomerIds.push(customerId);
