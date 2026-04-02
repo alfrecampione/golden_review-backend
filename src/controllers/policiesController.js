@@ -5,31 +5,15 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import {
     getStoredJsonForCustomer,
     saveJsonForCustomer,
-    syncAndFindApplication,
+    getFilesForCustomer,
 } from '../services/applicationSyncService.js';
-import { invokePdfLambda } from '../services/lambdaInvoke.js';
-import { mapLambdaResultToPolicyJson } from '../lib/utils.js';
+import { resolveCarrierName } from '../services/carrierConfig.js';
+import { processCustomerFiles } from '../services/documentPipeline.js';
 import { buildPolicyWhereClause } from '../lib/policyQueryUtils.js';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
-function extractFileId(applicationInfo) {
-    if (applicationInfo?.dbFile?.file_id) {
-        return String(applicationInfo.dbFile.file_id);
-    }
-    if (applicationInfo?.fileId) {
-        return String(applicationInfo.fileId);
-    }
-    if (applicationInfo?.file_id) {
-        return String(applicationInfo.file_id);
-    }
-    if (typeof applicationInfo === 'string') {
-        return applicationInfo;
-    }
-    return null;
-}
-
-async function resolvePolicyContext(policyId) {
+export async function resolvePolicyContext(policyId) {
     const result = await prisma.$queryRaw`
         SELECT customer_id, carrier_id, policy_number
         FROM qq.policies
@@ -835,18 +819,6 @@ class PoliciesController {
             const policyContext = await resolvePolicyContext(policyId);
             const customerId = policyContext?.customerId ?? null;
             let carrierId = policyContext?.carrierId ?? null;
-            const policyNumber = policyContext?.policyNumber ?? null;
-
-            const headCarrierRaw = await prisma.$queryRaw`
-                SELECT head_carrier_id
-                FROM intranet.head_carriers hc
-                WHERE ${carrierId} = ANY(hc.contact_id)
-            `;
-
-            const headCarrierId = headCarrierRaw[0]?.head_carrier_id;
-            if (headCarrierId) {
-                carrierId = headCarrierId;
-            }
 
             if (!customerId) {
                 return reply.code(404).send({
@@ -862,100 +834,38 @@ class PoliciesController {
                 });
             }
 
-            // Always refresh on manual audit: sync files, detect application and recalculate JSON.
-            const { applicationInfo } = await syncAndFindApplication(
-                customerId,
-                { carrierId, policyNumber },
-                { forceRefresh: true }
-            );
+            // Resolve carrier name from carrierId via head_carriers
+            const carrierName = await resolveCarrierName(carrierId);
 
-            if (!applicationInfo) {
+            // Get all files for the customer
+            const files = await getFilesForCustomer(customerId);
+
+            if (!files || files.length === 0) {
                 return reply.send({
                     success: true,
                     data: null
                 });
             }
 
-            const fileId = extractFileId(applicationInfo);
+            // Run the LLM pipeline: OCR → classify → extract → save to CustomerDocument
+            const results = await processCustomerFiles({ customerId, carrierName, files });
 
-            if (!fileId) {
-                return reply.send({
-                    success: true,
-                    data: null
-                });
+            // Find the application result to save as editable JSON
+            const applicationResult = results.find(r => r.type === 'application' && r.data);
+
+            if (applicationResult?.data) {
+                await saveJsonForCustomer(customerId, applicationResult.data);
             }
 
-            let userApp = await prisma.userApplication.findUnique({
-                where: { customerId: customerId },
+            return reply.send({
+                success: true,
+                count: results.length,
+                documents: results,
+                data: applicationResult?.data || null
             });
-
-            // Keep UserApplication in sync for future short-circuit checks.
-            if (!userApp) {
-                userApp = await prisma.userApplication.create({
-                    data: {
-                        customerId,
-                        fileId,
-                        isProcessed: false,
-                    },
-                });
-            } else if (userApp.fileId !== fileId) {
-                userApp = await prisma.userApplication.update({
-                    where: { id: userApp.id },
-                    data: {
-                        fileId,
-                        isProcessed: false,
-                    },
-                });
-            }
-
-            // Get s3_url
-            const fileRow = await prisma.$queryRaw`
-            SELECT s3_url
-            FROM qq.contact_files
-            WHERE file_id = ${fileId}
-            LIMIT 1
-            `;
-
-            const s3Url = Array.isArray(fileRow) && fileRow.length > 0
-                ? fileRow[0].s3_url
-                : null;
-
-            if (!s3Url) {
-                return reply.code(404).send({
-                    success: false,
-                    message: `No s3_url found for file_id ${fileId}`
-                });
-            }
-
-            // Invoke Lambda
-            const lambdaResult = await invokePdfLambda(s3Url, carrierId);
-            const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
-
-            await saveJsonForCustomer(customerId, mappedResult);
-
-            if (!userApp.isProcessed || userApp.fileId !== fileId) {
-                await prisma.userApplication.update({
-                    where: { id: userApp.id },
-                    data: {
-                        fileId,
-                        // isProcessed: true,
-                    },
-                });
-            }
-
-            return reply.send(mappedResult);
 
         } catch (error) {
             console.error('Error auditing policy:', error);
-
-            if (error.response?.status && error.response?.data) {
-                return reply.code(error.response.status).send({
-                    success: false,
-                    message: 'Error from Lambda',
-                    error: error.response.data
-                });
-            }
-
             return reply.code(500).send({
                 success: false,
                 message: 'Internal error auditing policy',

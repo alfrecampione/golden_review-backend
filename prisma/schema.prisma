@@ -123,3 +123,17 @@ model TempJSONStorage {
   @@map("temp_json_storage")
   @@schema("goldenaudit")
 }
+
+model CustomerDocument {
+  id         String   @id @default(uuid())
+  customerId Int
+  fileId     String
+  type       String // declaration_page, application, id_card, other
+  carrier    String
+  confidence Float
+  data       Json     @db.Json
+  createdAt  DateTime @default(now())
+
+  @@map("customer_document")
+  @@schema("goldenaudit")
+}

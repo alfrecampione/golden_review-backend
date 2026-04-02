@@ -4,6 +4,7 @@ import PoliciesController from './controllers/policiesController.js';
 import GraphController from './controllers/graphController.js';
 import CarriersController from './controllers/carriersController.js';
 import { requireAuth, optionalAuth, requireMinimumRole } from './middleware/auth.js';
+import { processDocumentWithBedrock, processsCustomerWithBedrock } from './controllers/llmController.js';
 
 // Function to register all routes
 async function routes(fastify, options) {
@@ -56,7 +57,10 @@ async function routes(fastify, options) {
     fastify.post('/contacts/:contactId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.saveContactTemporaryJson);
     fastify.get('/policies/:policyId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.getPolicyTemporaryJson);
     fastify.post('/policies/:policyId/temporary-json', { preHandler: [requireAuth, requireMinimumRole('User')] }, PoliciesController.savePolicyTemporaryJson);
-    // 
+
+    // Bedrock LLM route (protected)
+    fastify.post('/process-document', { preHandler: [requireAuth, requireMinimumRole('User')] }, processDocumentWithBedrock);
+    fastify.get('/process-customer/:policyId', { preHandler: [requireAuth, requireMinimumRole('User')] }, processsCustomerWithBedrock);
 
     // Server health route
     fastify.get('/health', async (request, reply) => {
