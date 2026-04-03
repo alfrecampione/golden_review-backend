@@ -11,7 +11,6 @@ import { startUserSyncJob } from './jobs/syncUsersJob.js';
 import { startPoliciesSyncJob } from './jobs/syncPoliciesJob.js';
 import { startFilesFromPolicyLogsJob } from './jobs/syncFilesToDB.js';
 import llm from './services/llmService.js';
-import ocr from './services/ocrService.js';
 
 // Load environment variables
 dotenv.config();
@@ -106,7 +105,6 @@ async function validateAiDependencies() {
     }
 
     await llm.validateAccess();
-    await ocr.validateAccess();
 }
 
 // Function to start the server
@@ -126,7 +124,7 @@ const start = async () => {
         });
         console.log(`✅ HTTPS Server running on https://localhost:${port}`);
         console.log(`✅ Database connected successfully`);
-        console.log('✅ Bedrock and Textract access validated');
+        console.log('✅ Bedrock access validated');
     } catch (err) {
         console.error('Startup failed:', err);
         process.exit(1);

@@ -58,6 +58,41 @@ class LLMService {
         return LLMService.parseJson(text);
     }
 
+    async invokeWithPdf(pdfBuffer, prompt, maxTokens = 1500) {
+        const base64 = pdfBuffer.toString('base64');
+        const command = new InvokeModelCommand({
+            modelId: MODEL_ID,
+            contentType: 'application/json',
+            accept: 'application/json',
+            body: JSON.stringify({
+                anthropic_version: API_VERSION,
+                messages: [{
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'document',
+                            source: {
+                                type: 'base64',
+                                media_type: 'application/pdf',
+                                data: base64,
+                            },
+                        },
+                        { type: 'text', text: prompt },
+                    ],
+                }],
+                max_tokens: maxTokens,
+                temperature: 0,
+            }),
+        });
+
+        const res = await this.client.send(command);
+        const raw = new TextDecoder().decode(res.body);
+        const parsed = JSON.parse(raw);
+        const text = parsed.content?.[0]?.text ?? '';
+
+        return LLMService.parseJson(text);
+    }
+
     static parseJson(text) {
         try {
             return JSON.parse(text);

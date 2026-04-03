@@ -3,18 +3,17 @@ import path from 'path';
 import os from 'os';
 import prisma from '../prisma.js';
 import llm from './llmService.js';
-import ocr from './ocrService.js';
 import { DOCUMENT_TYPES, MIN_CONFIDENCE, getSchema, getInstructions } from './carrierConfig.js';
 
 const TMP_DIR = os.tmpdir();
 
 /* ── Prompts ─────────────────────────────────────── */
 
-function buildClassificationPrompt(text) {
+function buildClassificationPrompt() {
     return `You are an expert insurance document classifier.
 
 A single PDF file may contain MULTIPLE documents concatenated together.
-Analyze the full text and identify ALL distinct documents present.
+Analyze the attached PDF document and identify ALL distinct documents present.
 
 For each document found, return its type and a confidence score.
 
@@ -38,13 +37,10 @@ Document type rules:
 Important:
 - A PDF can contain BOTH a declaration page AND an application
 - Return ALL documents found, not just one
-- Be specific about the carrier name (lowercase, underscored)
-
-Text:
-${text}`;
+- Be specific about the carrier name (lowercase, underscored)`;
 }
 
-function buildExtractionPrompt(text, carrier) {
+function buildExtractionPrompt(carrier) {
     const schema = getSchema(carrier);
     if (!schema) return null;
 
@@ -52,7 +48,7 @@ function buildExtractionPrompt(text, carrier) {
 
 ${getInstructions(carrier)}
 
-Extract the data from the document below and return ONLY valid JSON matching this schema exactly:
+Extract the data from the attached PDF document and return ONLY valid JSON matching this schema exactly:
 
 ${JSON.stringify(schema, null, 2)}
 
@@ -61,10 +57,7 @@ Rules:
 - Do NOT hallucinate or invent data
 - Preserve the structure exactly as shown
 - Keep raw values as they appear in the document (do not reformat dates, currency, etc.)
-- For discounts: use "Policy" key for policy-level discounts, "Vehicle" key for vehicle-level discounts
-
-Document:
-${text}`;
+- For discounts: use "Policy" key for policy-level discounts, "Vehicle" key for vehicle-level discounts`;
 }
 
 /* ── File helpers ────────────────────────────────── */
@@ -87,15 +80,15 @@ async function downloadToLocal(fileId, s3Url) {
 
 /* ── Core pipeline steps ─────────────────────────── */
 
-async function classifyDocuments(text) {
-    const result = await llm.invoke(buildClassificationPrompt(text), 500);
+async function classifyDocuments(pdfBuffer) {
+    const result = await llm.invokeWithPdf(pdfBuffer, buildClassificationPrompt(), 500);
     return result?.documents ?? [];
 }
 
-async function extractApplicationData(text, carrier) {
-    const prompt = buildExtractionPrompt(text, carrier);
+async function extractApplicationData(pdfBuffer, carrier) {
+    const prompt = buildExtractionPrompt(carrier);
     if (!prompt) return null;
-    return llm.invoke(prompt, 4000);
+    return llm.invokeWithPdf(pdfBuffer, prompt, 4000);
 }
 
 /* ── Public API ──────────────────────────────────── */
@@ -110,10 +103,7 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
         const buffer = await downloadToLocal(fileId, file.s3_url);
         if (!buffer) continue;
 
-        const text = await ocr.extract(buffer);
-        if (!text) continue;
-
-        const documents = await classifyDocuments(text);
+        const documents = await classifyDocuments(buffer);
 
         for (const doc of documents) {
             if (doc.confidence < MIN_CONFIDENCE) continue;
@@ -122,7 +112,7 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
             let data = null;
 
             if (doc.type === DOCUMENT_TYPES.APPLICATION) {
-                data = await extractApplicationData(text, carrier);
+                data = await extractApplicationData(buffer, carrier);
             }
 
             const saved = await prisma.customerDocument.create({
@@ -152,10 +142,7 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
 }
 
 async function processSingleBuffer(buffer, carrierHint) {
-    const text = await ocr.extract(buffer);
-    if (!text) return [];
-
-    const documents = await classifyDocuments(text);
+    const documents = await classifyDocuments(buffer);
     const results = [];
 
     for (const doc of documents) {
@@ -165,7 +152,7 @@ async function processSingleBuffer(buffer, carrierHint) {
         let data = null;
 
         if (doc.type === DOCUMENT_TYPES.APPLICATION && carrier) {
-            data = await extractApplicationData(text, carrier);
+            data = await extractApplicationData(buffer, carrier);
         }
 
         results.push({
