@@ -105,14 +105,21 @@ async function validateAiDependencies() {
         throw new Error('Missing BEDROCK_ACCESS_KEY_ID or BEDROCK_SECRET_ACCESS_KEY');
     }
 
-    await llm.validateAccess();
-    await ocr.validateAccess();
+    const llmAccess = await llm.validateAccess();
+    const ocrAccess = await ocr.validateAccess();
+    return { llmAccess, ocrAccess };
 }
 
 // Function to start the server
 const start = async () => {
     try {
-        await validateAiDependencies();
+        const { llmAccess, ocrAccess } = await validateAiDependencies();
+        if (!llmAccess) {
+            throw new Error('Unable to access Bedrock LLM service. Check credentials and permissions.');
+        }
+        if (!ocrAccess) {
+            throw new Error('Unable to access Bedrock Textract service. Check credentials and permissions.');
+        }
 
         startUserSyncJob();
         startPoliciesSyncJob();
