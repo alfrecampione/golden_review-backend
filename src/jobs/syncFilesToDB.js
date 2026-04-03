@@ -2,36 +2,16 @@
 import cron from 'node-cron';
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import {
-    getStoredJsonForCustomer,
-    saveJsonForCustomer,
-    syncAndFindApplication,
-} from '../services/applicationSyncService.js';
-import { invokePdfLambda } from '../services/lambdaInvoke.js';
-import { mapLambdaResultToPolicyJson } from '../lib/utils.js';
-
-function extractFileId(applicationInfo) {
-    if (applicationInfo?.dbFile?.file_id) {
-        return String(applicationInfo.dbFile.file_id);
-    }
-    if (applicationInfo?.fileId) {
-        return String(applicationInfo.fileId);
-    }
-    if (applicationInfo?.file_id) {
-        return String(applicationInfo.file_id);
-    }
-    if (typeof applicationInfo === 'string') {
-        return applicationInfo;
-    }
-    return null;
-}
+import { getFilesForCustomer } from '../services/applicationSyncService.js';
+import { resolveCarrierName } from '../services/carrierConfig.js';
+import { processCustomerFiles } from '../services/documentPipeline.js';
+import { downloadFilesToDB } from '../services/contactFilesService.js';
 
 /**
  * Process all policy IDs logged in UpdatePolicyJobLog from the previous day.
  * For each associated customer:
  *  - Sync files to S3/DB
- *  - Find the most recent application file
- *  - Store in UserApplication and invoke Lambda to extract data
+ *  - Run LLM pipeline to classify and extract data → save to CustomerDocument
  */
 /**
  * @param {boolean} [onlyYesterday=true] Si true, procesa solo los logs de ayer; si false, procesa toda la tabla
@@ -117,7 +97,7 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
 
     for (const customerId of uniqueCustomerIds) {
         try {
-            // Resolve carrier before file detection so keyword matching can be carrier-specific.
+            // Resolve carrier
             let carrierId = null;
             try {
                 const carrierResult = await prisma.$queryRaw`
@@ -130,87 +110,34 @@ async function syncFilesFromPolicyLogs(onlyYesterday = true) {
                 if (Array.isArray(carrierResult) && carrierResult.length > 0) {
                     carrierId = Number(carrierResult[0].carrier_id);
                 }
-
-                const headCarrierRaw = await prisma.$queryRaw`
-                    SELECT head_carrier_id
-                    FROM intranet.head_carriers hc
-                    WHERE ${carrierId} = ANY(hc.contact_id)
-                `;
-
-                const headCarrierId = headCarrierRaw[0]?.head_carrier_id;
-                if (headCarrierId) {
-                    carrierId = Number(headCarrierId);
-                }
             } catch (carrierErr) {
                 console.error(`[syncFilesFromPolicyLogs] Error fetching carrier_id for customer ${customerId}:`, carrierErr);
             }
 
-            let userApp = await prisma.userApplication.findUnique({
-                where: { customerId: customerId },
-            });
+            const carrierName = await resolveCarrierName(carrierId);
 
-
-            let fileId = userApp?.fileId || null;
-
-            if (!fileId) {
-                // a-c) Sync files, get files, and find application in one step only when needed.
-                const { syncResult, applicationInfo } = await syncAndFindApplication(customerId, {
-                    carrierId,
-                });
-                console.log(`[syncFilesFromPolicyLogs] Customer ${customerId} sync result:`, syncResult);
-
-                if (!applicationInfo) {
-                    console.log(`[syncFilesFromPolicyLogs] No application file found for customer ${customerId}`);
-                    processedCount++;
-                    processedCustomerIds.push(customerId);
-                    continue;
-                }
-
-                fileId = extractFileId(applicationInfo);
+            // Sync files from QQ to S3/DB
+            try {
+                await downloadFilesToDB(customerId);
+            } catch (syncErr) {
+                console.error(`[syncFilesFromPolicyLogs] File sync failed for customer ${customerId}:`, syncErr);
             }
 
-            if (!fileId) {
-                console.error(`[syncFilesFromPolicyLogs] No valid fileId found for customer ${customerId}`);
-                failedCount++;
+            // Get all files and run the LLM pipeline
+            const files = await getFilesForCustomer(customerId);
+
+            if (!files || files.length === 0) {
+                console.log(`[syncFilesFromPolicyLogs] No files found for customer ${customerId}`);
+                processedCount++;
+                processedCustomerIds.push(customerId);
                 continue;
             }
 
-            // d) Check or create UserApplication record
-            if (!userApp) {
-                userApp = await prisma.userApplication.create({
-                    data: {
-                        customerId: customerId,
-                        fileId: fileId,
-                    },
-                });
-            } else if (userApp.fileId !== fileId) {
-                userApp = await prisma.userApplication.update({
-                    where: { id: userApp.id },
-                    data: {
-                        fileId: fileId,
-                    },
-                });
-            }
+            const results = await processCustomerFiles({ customerId, carrierName, files });
+            console.log(`[syncFilesFromPolicyLogs] Customer ${customerId}: ${results.length} document(s) saved to CustomerDocument`);
 
-            // e) Get s3_url from qq.contact_files and invoke Lambda
-            let lambdaResult;
-            try {
-                // Get s3_url from DB
-                const fileRow = await prisma.$queryRaw`SELECT s3_url FROM qq.contact_files WHERE file_id = ${fileId}`;
-                const s3Url = Array.isArray(fileRow) && fileRow.length > 0 ? fileRow[0].s3_url : null;
-                if (!s3Url) {
-                    throw new Error(`No s3_url found for file_id ${fileId}`);
-                }
-                lambdaResult = await invokePdfLambda(s3Url, carrierId);
-                const mappedResult = mapLambdaResultToPolicyJson(lambdaResult);
-                await saveJsonForCustomer(customerId, mappedResult);
-
-                processedCount++;
-                processedCustomerIds.push(customerId);
-            } catch (lambdaErr) {
-                console.error(`[syncFilesFromPolicyLogs] Lambda failed for customer ${customerId}:`, lambdaErr);
-                failedCount++;
-            }
+            processedCount++;
+            processedCustomerIds.push(customerId);
         } catch (err) {
             console.error(`[syncFilesFromPolicyLogs] Failed to process customer ${customerId}:`, err);
             failedCount++;

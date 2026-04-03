@@ -4,8 +4,6 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { s3, BUCKET } from '../lib/s3.js';
 import {
-    getStoredJsonForCustomer,
-    saveJsonForCustomer,
     getFilesForCustomer,
 } from '../services/applicationSyncService.js';
 import { resolveCarrierName } from '../services/carrierConfig.js';
@@ -44,19 +42,22 @@ async function getEditableJsonForCustomer(reply, customerId) {
         return reply.code(404).send({ success: false, message: 'Contact not found' });
     }
 
-    const storedJson = await getStoredJsonForCustomer(customerId);
+    const doc = await prisma.customerDocument.findFirst({
+        where: { customerId: Number(customerId), type: 'application' },
+        orderBy: { createdAt: 'desc' },
+    });
 
-    if (!storedJson?.data || !isEditableJsonPayload(storedJson.data)) {
+    if (!doc?.data || !isEditableJsonPayload(doc.data)) {
         return reply.code(404).send({
             success: false,
-            message: 'Temporary JSON not found for this contact',
+            message: 'No application document found for this contact',
         });
     }
 
     return reply.send({
         success: true,
         customerId,
-        data: storedJson.data,
+        data: doc.data,
     });
 }
 
@@ -72,11 +73,26 @@ async function saveEditableJsonForCustomer(reply, customerId, payload) {
         });
     }
 
-    const savedRecord = await saveJsonForCustomer(customerId, payload);
+    const existing = await prisma.customerDocument.findFirst({
+        where: { customerId: Number(customerId), type: 'application' },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    if (!existing) {
+        return reply.code(404).send({
+            success: false,
+            message: 'No application document found for this contact',
+        });
+    }
+
+    const savedRecord = await prisma.customerDocument.update({
+        where: { id: existing.id },
+        data: { data: payload },
+    });
 
     return reply.send({
         success: true,
-        message: 'Temporary JSON saved successfully',
+        message: 'JSON saved successfully',
         customerId,
         data: savedRecord.data,
     });
@@ -846,15 +862,11 @@ class PoliciesController {
                 });
             }
 
-            // Run the LLM pipeline: OCR → classify → extract → save to CustomerDocument
+            // Run the LLM pipeline: classify → extract → save to CustomerDocument
             const results = await processCustomerFiles({ customerId, carrierName, files });
 
-            // Find the application result to save as editable JSON
+            // Find the application result
             const applicationResult = results.find(r => r.type === 'application' && r.data);
-
-            if (applicationResult?.data) {
-                await saveJsonForCustomer(customerId, applicationResult.data);
-            }
 
             return reply.send({
                 success: true,
