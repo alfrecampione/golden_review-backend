@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { TextDecoder } from 'util';
 
@@ -13,6 +14,23 @@ class LLMService {
                 secretAccessKey: process.env.BEDROCK_SECRET_ACCESS_KEY,
             },
         });
+    }
+
+    async validateAccess() {
+        const command = new InvokeModelCommand({
+            modelId: MODEL_ID,
+            contentType: 'application/json',
+            accept: 'application/json',
+            body: JSON.stringify({
+                anthropic_version: API_VERSION,
+                messages: [{ role: 'user', content: 'Reply with {} only.' }],
+                max_tokens: 10,
+                temperature: 0,
+            }),
+        });
+
+        await this.client.send(command);
+        return true;
     }
 
     async invoke(prompt, maxTokens = 1500) {

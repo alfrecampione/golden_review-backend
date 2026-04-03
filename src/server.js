@@ -10,6 +10,8 @@ import connectPgSimple from 'connect-pg-simple';
 import { startUserSyncJob } from './jobs/syncUsersJob.js';
 import { startPoliciesSyncJob } from './jobs/syncPoliciesJob.js';
 import { startFilesFromPolicyLogsJob } from './jobs/syncFilesToDB.js';
+import llm from './services/llmService.js';
+import ocr from './services/ocrService.js';
 
 // Load environment variables
 dotenv.config();
@@ -98,23 +100,34 @@ fastify.addHook('preHandler', async (request, reply) => {
 // Register routes
 fastify.register(routes);
 
-// Schedule background jobs
-startUserSyncJob();
-startPoliciesSyncJob();
-const onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
-const runOnStartup = process.env.RUN_ON_STARTUP ? process.env.RUN_ON_STARTUP === 'true' : false;
-startFilesFromPolicyLogsJob(onlyYesterday, runOnStartup);
+async function validateAiDependencies() {
+    if (!process.env.BEDROCK_ACCESS_KEY_ID || !process.env.BEDROCK_SECRET_ACCESS_KEY) {
+        throw new Error('Missing BEDROCK_ACCESS_KEY_ID or BEDROCK_SECRET_ACCESS_KEY');
+    }
+
+    await llm.validateAccess();
+    await ocr.validateAccess();
+}
 
 // Function to start the server
 const start = async () => {
     try {
+        await validateAiDependencies();
+
+        startUserSyncJob();
+        startPoliciesSyncJob();
+        const onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
+        const runOnStartup = process.env.RUN_ON_STARTUP ? process.env.RUN_ON_STARTUP === 'true' : false;
+        startFilesFromPolicyLogsJob(onlyYesterday, runOnStartup);
+
         const port = process.env.PORT || 4000;
-        fastify.listen({
+        await fastify.listen({
             port: port,
             host: '0.0.0.0' // Allow connections from any IP
         });
         console.log(`✅ HTTPS Server running on https://localhost:${port}`);
         console.log(`✅ Database connected successfully`);
+        console.log('✅ Bedrock and Textract access validated');
     } catch (err) {
         fastify.log.error(err);
         process.exit(1);
