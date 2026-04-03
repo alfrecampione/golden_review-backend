@@ -6,13 +6,17 @@ import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { s3, BUCKET } from '../lib/s3.js';
 import prisma from '../prisma.js';
 import llm from './llmService.js';
-import { DOCUMENT_TYPES, MIN_CONFIDENCE, getSchema, getInstructions } from './carrierConfig.js';
+import { DOCUMENT_TYPES, DOCUMENT_TYPE_DESCRIPTIONS, MIN_CONFIDENCE, getSchema, getInstructions } from './carrierConfig.js';
 
 const TMP_DIR = os.tmpdir();
 
 /* ── Prompts ─────────────────────────────────────── */
 
 function buildClassificationPrompt() {
+    const typeList = Object.entries(DOCUMENT_TYPE_DESCRIPTIONS)
+        .map(([type, desc]) => `- ${type} = ${desc}`)
+        .join('\n');
+
     return `You are an expert insurance document classifier.
 
 A single PDF file may contain MULTIPLE documents concatenated together.
@@ -24,22 +28,20 @@ Return JSON:
 {
   "documents": [
     {
-      "type": "declaration_page | application | id_card | other",
+      "type": "<one of the types listed below>",
       "confidence": number (0-1),
       "carrier": "string (e.g. progressive, geico, state_farm, etc.) or null if unknown"
     }
   ]
 }
 
-Document type rules:
-- declaration_page = policy summary / dec page showing coverages and premiums
-- application = the carrier's application form for insurance with detailed policy data, drivers, vehicles, coverages, discounts, underwriting
-- id_card = insurance ID card
-- other = anything else
+Valid document types (use ONLY these):
+${typeList}
 
 Important:
-- A PDF can contain BOTH a declaration page AND an application
+- A PDF can contain MULTIPLE documents of different types
 - Return ALL documents found, not just one
+- Only use the types listed above. Do NOT return any other type
 - Be specific about the carrier name (lowercase, underscored)`;
 }
 

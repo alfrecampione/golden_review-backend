@@ -4,7 +4,30 @@ const DOCUMENT_TYPES = Object.freeze({
     DECLARATION_PAGE: 'declaration_page',
     APPLICATION: 'application',
     ID_CARD: 'id_card',
-    OTHER: 'other',
+    DISCLAIMED_INSURANCE_EN: 'disclaimed_insurance_en',
+    DISCLAIMED_INSURANCE_ES: 'disclaimed_insurance_es',
+    HOUSEHOLD_MEMBER_DISCLOSURE_EN: 'household_member_disclosure_en',
+    HOUSEHOLD_MEMBER_DISCLOSURE_ES: 'household_member_disclosure_es',
+    COMP_COLLISION_EXCLUDED_EN: 'comp_collision_excluded_en',
+    BI_REJECTION_EN: 'bi_rejection_en',
+    BI_REJECTION_ES: 'bi_rejection_es',
+    UM_REJECTION_ES: 'um_rejection_es',
+    UM_REJECTION_EN: 'um_rejection_en',
+});
+
+const DOCUMENT_TYPE_DESCRIPTIONS = Object.freeze({
+    [DOCUMENT_TYPES.DECLARATION_PAGE]: 'Policy summary / dec page showing coverages and premiums',
+    [DOCUMENT_TYPES.APPLICATION]: "Carrier's application form for insurance with detailed policy data, drivers, vehicles, coverages, discounts, underwriting",
+    [DOCUMENT_TYPES.ID_CARD]: 'Insurance ID card',
+    [DOCUMENT_TYPES.DISCLAIMED_INSURANCE_EN]: 'Disclaimed Insurance disclosure (English)',
+    [DOCUMENT_TYPES.DISCLAIMED_INSURANCE_ES]: 'Disclaimed Insurance disclosure (Spanish / Español)',
+    [DOCUMENT_TYPES.HOUSEHOLD_MEMBER_DISCLOSURE_EN]: 'Household Member Disclosure (English)',
+    [DOCUMENT_TYPES.HOUSEHOLD_MEMBER_DISCLOSURE_ES]: 'Household Member Disclosure (Spanish / Español)',
+    [DOCUMENT_TYPES.COMP_COLLISION_EXCLUDED_EN]: 'Comprehensive and Collision Coverage Excluded Disclosure (English)',
+    [DOCUMENT_TYPES.BI_REJECTION_EN]: 'Bodily Injury Liability Rejection Disclosure (English)',
+    [DOCUMENT_TYPES.BI_REJECTION_ES]: 'Responsabilidad por Daños Corporales - Declaración de Rechazo (Spanish / Español)',
+    [DOCUMENT_TYPES.UM_REJECTION_ES]: 'Cobertura de Motorista No Asegurado (UM) - Declaración de Rechazo (Spanish / Español)',
+    [DOCUMENT_TYPES.UM_REJECTION_EN]: 'Uninsured Motorist (UM) Rejection Disclosure (English)',
 });
 
 const HEAD_CARRIER_MAP = Object.freeze({
@@ -81,7 +104,7 @@ const CARRIER_INSTRUCTIONS = Object.freeze({
     ],
 });
 
-const MIN_CONFIDENCE = 0.7;
+const MIN_CONFIDENCE = 0.85;
 
 function getSchema(carrier) {
     return APPLICATION_SCHEMAS[carrier] ?? null;
@@ -108,6 +131,7 @@ async function resolveCarrierName(carrierId) {
 
 export {
     DOCUMENT_TYPES,
+    DOCUMENT_TYPE_DESCRIPTIONS,
     MIN_CONFIDENCE,
     getSchema,
     getInstructions,
