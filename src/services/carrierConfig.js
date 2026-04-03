@@ -104,7 +104,7 @@ const CARRIER_INSTRUCTIONS = Object.freeze({
     ],
 });
 
-const MIN_CONFIDENCE = 0.85;
+const MIN_CONFIDENCE = 0.90;
 
 function getSchema(carrier) {
     return APPLICATION_SCHEMAS[carrier] ?? null;

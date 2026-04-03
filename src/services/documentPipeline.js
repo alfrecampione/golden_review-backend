@@ -119,28 +119,22 @@ async function extractApplicationData(pdfBuffer, carrier) {
 
 async function processCustomerFiles({ customerId, carrierName, files }) {
     const pdfFiles = files.filter(isPdf);
-    console.log(`[Pipeline] Starting audit for customer ${customerId} | ${pdfFiles.length} PDF(s) of ${files.length} total files | carrierHint=${carrierName || 'none'}`);
     const results = [];
 
     for (const file of files) {
         if (!isPdf(file)) continue;
 
         const fileId = String(file.file_id);
-        console.log(`[Pipeline] Downloading file ${fileId} (${file.file_name_reported})`);
         const buffer = await downloadToLocal(fileId, file.s3_url);
         if (!buffer) {
             console.warn(`[Pipeline] Download failed for file ${fileId}, skipping`);
             continue;
         }
-        console.log(`[Pipeline] Downloaded file ${fileId} (${(buffer.length / 1024).toFixed(1)} KB)`);
 
-        console.log(`[Pipeline] Classifying documents in file ${fileId}...`);
         const documents = await classifyDocuments(buffer);
-        console.log(`[Pipeline] Classification result for file ${fileId}: ${documents.length} document(s) found`, documents.map(d => `${d.type} (${d.carrier}, conf=${d.confidence})`));
 
         for (const doc of documents) {
             if (doc.confidence < MIN_CONFIDENCE) {
-                console.log(`[Pipeline] Skipping ${doc.type} (conf=${doc.confidence} < ${MIN_CONFIDENCE})`);
                 continue;
             }
 
@@ -148,12 +142,9 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
             let data = null;
 
             if (doc.type === DOCUMENT_TYPES.APPLICATION) {
-                console.log(`[Pipeline] Extracting application data for carrier=${carrier} from file ${fileId}...`);
                 data = await extractApplicationData(buffer, carrier);
-                console.log(`[Pipeline] Extraction complete for file ${fileId} | data=${data ? 'OK' : 'null'}`);
             }
 
-            console.log(`[Pipeline] Saving document: type=${doc.type}, carrier=${carrier}, fileId=${fileId}`);
             const saved = await prisma.customerDocument.create({
                 data: {
                     customerId,
@@ -164,7 +155,6 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
                     data: data || {},
                 },
             });
-            console.log(`[Pipeline] Saved document id=${saved.id}`);
 
             results.push({
                 id: saved.id,
@@ -178,21 +168,16 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
         }
     }
 
-    console.log(`[Pipeline] Audit complete for customer ${customerId} | ${results.length} document(s) processed`);
     return results;
 }
 
 async function processSingleBuffer(buffer, carrierHint) {
-    console.log(`[Pipeline] processSingleBuffer | size=${(buffer.length / 1024).toFixed(1)} KB | carrierHint=${carrierHint || 'none'}`);
 
-    console.log('[Pipeline] Classifying documents...');
     const documents = await classifyDocuments(buffer);
-    console.log(`[Pipeline] Classification result: ${documents.length} document(s) found`, documents.map(d => `${d.type} (${d.carrier}, conf=${d.confidence})`));
     const results = [];
 
     for (const doc of documents) {
         if (doc.confidence < MIN_CONFIDENCE) {
-            console.log(`[Pipeline] Skipping ${doc.type} (conf=${doc.confidence} < ${MIN_CONFIDENCE})`);
             continue;
         }
 
@@ -200,9 +185,7 @@ async function processSingleBuffer(buffer, carrierHint) {
         let data = null;
 
         if (doc.type === DOCUMENT_TYPES.APPLICATION && carrier) {
-            console.log(`[Pipeline] Extracting application data for carrier=${carrier}...`);
             data = await extractApplicationData(buffer, carrier);
-            console.log(`[Pipeline] Extraction complete | data=${data ? 'OK' : 'null'}`);
         }
 
         results.push({
@@ -213,7 +196,6 @@ async function processSingleBuffer(buffer, carrierHint) {
         });
     }
 
-    console.log(`[Pipeline] processSingleBuffer done | ${results.length} document(s) processed`);
     return results;
 }
 
