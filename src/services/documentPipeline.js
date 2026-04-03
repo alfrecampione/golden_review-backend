@@ -30,7 +30,8 @@ Return JSON:
     {
       "type": "<one of the types listed below>",
       "confidence": number (0-1),
-      "carrier": "string (e.g. progressive, geico, state_farm, etc.) or null if unknown"
+      "carrier": "string (e.g. progressive, geico, state_farm, etc.) or null if unknown",
+      "policy_number": "string or null (extract the policy number printed on the document if visible, otherwise null)"
     }
   ]
 }
@@ -42,7 +43,8 @@ Important:
 - A PDF can contain MULTIPLE documents of different types
 - Return ALL documents found, not just one
 - Only use the types listed above. Do NOT return any other type
-- Be specific about the carrier name (lowercase, underscored)`;
+- Be specific about the carrier name (lowercase, underscored)
+- Extract the policy number from each document if it is clearly visible; return null if not present`;
 }
 
 function buildExtractionPrompt(carrier) {
@@ -117,7 +119,7 @@ async function extractApplicationData(pdfBuffer, carrier) {
 
 /* ── Public API ──────────────────────────────────── */
 
-async function processCustomerFiles({ customerId, carrierName, files }) {
+async function processCustomerFiles({ customerId, carrierName, files, policyNumber }) {
     const pdfFiles = files.filter(isPdf);
     const results = [];
 
@@ -138,6 +140,12 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
                 continue;
             }
 
+            // If the document carries a policy number, verify it matches the policy being audited
+            if (doc.policy_number && policyNumber && doc.policy_number !== policyNumber) {
+                console.log(`[Pipeline] Policy number mismatch for file ${fileId}: document has "${doc.policy_number}", expected "${policyNumber}" — skipping`);
+                continue;
+            }
+
             const carrier = doc.carrier || carrierName || 'progressive';
             let data = null;
 
@@ -145,8 +153,16 @@ async function processCustomerFiles({ customerId, carrierName, files }) {
                 data = await extractApplicationData(buffer, carrier);
             }
 
-            const saved = await prisma.customerDocument.create({
-                data: {
+            const saved = await prisma.customerDocument.upsert({
+                where: {
+                    customerId_type_carrier: { customerId, type: doc.type, carrier },
+                },
+                update: {
+                    fileId,
+                    confidence: doc.confidence,
+                    data: data || {},
+                },
+                create: {
                     customerId,
                     fileId,
                     type: doc.type,

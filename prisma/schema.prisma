@@ -134,6 +134,7 @@ model CustomerDocument {
   data       Json     @db.Json
   createdAt  DateTime @default(now())
 
+  @@unique([customerId, type, carrier])
   @@map("customer_document")
   @@schema("goldenaudit")
 }

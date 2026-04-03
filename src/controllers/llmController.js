@@ -41,6 +41,7 @@ export async function processsCustomerWithBedrock(request, reply) {
             customerId: context.customerId,
             carrierName,
             files,
+            policyNumber: context.policyNumber,
         });
 
         return reply.send({ success: true, count: results.length, data: results });

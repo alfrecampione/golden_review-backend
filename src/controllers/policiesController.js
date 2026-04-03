@@ -33,11 +33,11 @@ export async function resolvePolicyContext(policyId) {
     };
 }
 
-function isEditableJsonPayload(value) {
+function isJsonObject(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function getEditableJsonForCustomer(reply, customerId) {
+async function getApplicationDataForCustomer(reply, customerId) {
     if (!customerId || Number.isNaN(customerId)) {
         return reply.code(404).send({ success: false, message: 'Contact not found' });
     }
@@ -47,7 +47,7 @@ async function getEditableJsonForCustomer(reply, customerId) {
         orderBy: { createdAt: 'desc' },
     });
 
-    if (!doc?.data || !isEditableJsonPayload(doc.data)) {
+    if (!doc?.data || !isJsonObject(doc.data)) {
         return reply.code(404).send({
             success: false,
             message: 'No application document found for this contact',
@@ -61,12 +61,12 @@ async function getEditableJsonForCustomer(reply, customerId) {
     });
 }
 
-async function saveEditableJsonForCustomer(reply, customerId, payload) {
+async function saveApplicationDataForCustomer(reply, customerId, payload) {
     if (!customerId || Number.isNaN(customerId)) {
         return reply.code(404).send({ success: false, message: 'Contact not found' });
     }
 
-    if (!isEditableJsonPayload(payload)) {
+    if (!isJsonObject(payload)) {
         return reply.code(400).send({
             success: false,
             message: 'data must be a JSON object',
@@ -92,7 +92,7 @@ async function saveEditableJsonForCustomer(reply, customerId, payload) {
 
     return reply.send({
         success: true,
-        message: 'JSON saved successfully',
+        message: 'Application data saved successfully',
         customerId,
         data: savedRecord.data,
     });
@@ -562,43 +562,37 @@ class PoliciesController {
                 return reply.code(404).send({ success: false, message: 'Policy not found' });
             }
 
-            // Only return the application file registered in UserApplication
-            const userApp = await prisma.userApplication.findUnique({
-                where: { customerId },
-            });
-
-            if (!userApp || !userApp.fileId) {
-                return { success: true, count: 0, data: [] };
-            }
-
-            const files = await prisma.$queryRaw`
-                SELECT
-                    file_id,
-                    contact_id,
-                    file_name_reported,
-                    size_reported,
-                    size_final_bytes,
-                    created_on,
-                    modified_on,
-                    s3_url
-                FROM qq.contact_files
-                WHERE file_id = ${userApp.fileId}
-                LIMIT 1
+            // Return all classified documents for the customer, deduplicated by type
+            // (most recent contact_files.created_on wins when two docs share the same type)
+            const docs = await prisma.$queryRaw`
+                SELECT DISTINCT ON (cd.type)
+                    cd.type,
+                    cd.carrier,
+                    cd.confidence,
+                    cf.file_id,
+                    cf.contact_id,
+                    cf.created_on,
+                    cf.modified_on
+                FROM goldenaudit.customer_document cd
+                JOIN qq.contact_files cf ON cf.file_id::text = cd."fileId"
+                WHERE cd."customerId" = ${customerId}
+                ORDER BY cd.type, cf.created_on DESC NULLS LAST
             `;
 
-            // Convert BigInt values to JSON-safe types; omit raw fields not shown in UI
-            const serializedFiles = files.map(f => ({
-                file_id: f.file_id != null ? String(f.file_id) : null,
-                contact_id: f.contact_id != null ? Number(f.contact_id) : null,
-                created_on: f.created_on || null,
-                modified_on: f.modified_on || null,
-                type: 'Application',
+            const serializedDocs = docs.map(d => ({
+                file_id: d.file_id != null ? String(d.file_id) : null,
+                contact_id: d.contact_id != null ? Number(d.contact_id) : null,
+                created_on: d.created_on || null,
+                modified_on: d.modified_on || null,
+                type: d.type,
+                carrier: d.carrier || null,
+                confidence: d.confidence != null ? Number(d.confidence) : null,
             }));
 
             return {
                 success: true,
-                count: serializedFiles.length,
-                data: serializedFiles,
+                count: serializedDocs.length,
+                data: serializedDocs,
             };
         } catch (error) {
             console.error('Error fetching policy files:', error);
@@ -698,7 +692,7 @@ class PoliciesController {
         }
     }
 
-    static async getPolicyTemporaryJson(request, reply) {
+    static async getPolicyApplicationData(request, reply) {
         try {
             let { policyId } = request.params;
 
@@ -718,18 +712,18 @@ class PoliciesController {
                 return reply.code(404).send({ success: false, message: 'Policy not found' });
             }
 
-            return getEditableJsonForCustomer(reply, policyContext.customerId);
+            return getApplicationDataForCustomer(reply, policyContext.customerId);
         } catch (error) {
-            console.error('Error fetching policy temporary JSON:', error);
+            console.error('Error fetching policy application data:', error);
             return reply.code(500).send({
                 success: false,
-                message: 'Error fetching policy temporary JSON',
+                message: 'Error fetching policy application data',
                 error: error.message,
             });
         }
     }
 
-    static async savePolicyTemporaryJson(request, reply) {
+    static async savePolicyApplicationData(request, reply) {
         try {
             let { policyId } = request.params;
 
@@ -749,18 +743,18 @@ class PoliciesController {
                 return reply.code(404).send({ success: false, message: 'Policy not found' });
             }
 
-            return saveEditableJsonForCustomer(reply, policyContext.customerId, request.body?.data);
+            return saveApplicationDataForCustomer(reply, policyContext.customerId, request.body?.data);
         } catch (error) {
-            console.error('Error saving policy temporary JSON:', error);
+            console.error('Error saving policy application data:', error);
             return reply.code(500).send({
                 success: false,
-                message: 'Error saving policy temporary JSON',
+                message: 'Error saving policy application data',
                 error: error.message,
             });
         }
     }
 
-    static async getContactTemporaryJson(request, reply) {
+    static async getContactApplicationData(request, reply) {
         try {
             let { contactId } = request.params;
 
@@ -774,18 +768,18 @@ class PoliciesController {
                 return reply.code(400).send({ success: false, message: 'contactId must be an integer' });
             }
 
-            return getEditableJsonForCustomer(reply, contactId);
+            return getApplicationDataForCustomer(reply, contactId);
         } catch (error) {
-            console.error('Error fetching contact temporary JSON:', error);
+            console.error('Error fetching contact application data:', error);
             return reply.code(500).send({
                 success: false,
-                message: 'Error fetching contact temporary JSON',
+                message: 'Error fetching contact application data',
                 error: error.message,
             });
         }
     }
 
-    static async saveContactTemporaryJson(request, reply) {
+    static async saveContactApplicationData(request, reply) {
         try {
             let { contactId } = request.params;
 
@@ -799,12 +793,12 @@ class PoliciesController {
                 return reply.code(400).send({ success: false, message: 'contactId must be an integer' });
             }
 
-            return saveEditableJsonForCustomer(reply, contactId, request.body?.data);
+            return saveApplicationDataForCustomer(reply, contactId, request.body?.data);
         } catch (error) {
-            console.error('Error saving contact temporary JSON:', error);
+            console.error('Error saving contact application data:', error);
             return reply.code(500).send({
                 success: false,
-                message: 'Error saving contact temporary JSON',
+                message: 'Error saving contact application data',
                 error: error.message,
             });
         }
@@ -863,7 +857,7 @@ class PoliciesController {
             }
 
             // Run the LLM pipeline: classify → extract → save to CustomerDocument
-            const results = await processCustomerFiles({ customerId, carrierName, files });
+            const results = await processCustomerFiles({ customerId, carrierName, files, policyNumber: policyContext.policyNumber });
 
             // Find the application result
             const applicationResult = results.find(r => r.type === 'application' && r.data);
@@ -908,11 +902,15 @@ class PoliciesController {
             }
 
             const customerId = Number(policyResult[0].customer_id);
-            const userApp = await prisma.userApplication.findUnique({
-                where: { customerId },
-            });
 
-            if (!userApp || String(userApp.fileId) !== String(fileId)) {
+            // Verify the file belongs to this policy's customer
+            const fileCheck = await prisma.$queryRaw`
+                SELECT file_id FROM qq.contact_files
+                WHERE file_id::text = ${fileId} AND contact_id = ${customerId}
+                LIMIT 1
+            `;
+
+            if (!fileCheck?.length) {
                 return reply.code(403).send({ success: false, message: 'File not accessible for this policy' });
             }
 

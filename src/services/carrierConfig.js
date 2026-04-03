@@ -13,6 +13,8 @@ const DOCUMENT_TYPES = Object.freeze({
     BI_REJECTION_ES: 'bi_rejection_es',
     UM_REJECTION_ES: 'um_rejection_es',
     UM_REJECTION_EN: 'um_rejection_en',
+    UM_REJECTION_GTI_ES: 'um_rejection_gti_es',
+    UM_REJECTION_GTI_EN: 'um_rejection_gti_en',
 });
 
 const DOCUMENT_TYPE_DESCRIPTIONS = Object.freeze({
@@ -28,6 +30,8 @@ const DOCUMENT_TYPE_DESCRIPTIONS = Object.freeze({
     [DOCUMENT_TYPES.BI_REJECTION_ES]: 'Responsabilidad por Daños Corporales - Declaración de Rechazo (Spanish / Español)',
     [DOCUMENT_TYPES.UM_REJECTION_ES]: 'Cobertura de Motorista No Asegurado (UM) - Declaración de Rechazo (Spanish / Español)',
     [DOCUMENT_TYPES.UM_REJECTION_EN]: 'Uninsured Motorist (UM) Rejection Disclosure (English)',
+    [DOCUMENT_TYPES.UM_REJECTION_GTI_ES]: 'Cobertura de Motorista No Asegurado (UM) - Declaración de Rechazo Golden Trust Insurance (Spanish / Español)',
+    [DOCUMENT_TYPES.UM_REJECTION_GTI_EN]: 'Uninsured Motorist (UM) Rejection Disclosure - Golden Trust Insurance (English)',
 });
 
 const HEAD_CARRIER_MAP = Object.freeze({
