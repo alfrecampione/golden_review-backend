@@ -105,23 +105,14 @@ async function validateAiDependencies() {
         throw new Error('Missing BEDROCK_ACCESS_KEY_ID or BEDROCK_SECRET_ACCESS_KEY');
     }
 
-    const llmAccess = await llm.validateAccess();
-    const ocrAccess = await ocr.validateAccess();
-    return { llmAccess, ocrAccess };
+    await llm.validateAccess();
+    await ocr.validateAccess();
 }
 
 // Function to start the server
 const start = async () => {
     try {
-        const { llmAccess, ocrAccess } = await validateAiDependencies();
-        if (!llmAccess) {
-            console.log('Unable to access Bedrock LLM service. Check credentials and permissions.');
-            return;
-        }
-        if (!ocrAccess) {
-            console.log('Unable to access Bedrock Textract service. Check credentials and permissions.');
-            return;
-        }
+        await validateAiDependencies();
         startUserSyncJob();
         startPoliciesSyncJob();
         const onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
@@ -137,7 +128,7 @@ const start = async () => {
         console.log(`✅ Database connected successfully`);
         console.log('✅ Bedrock and Textract access validated');
     } catch (err) {
-        fastify.log.error(err);
+        console.error('Startup failed:', err);
         process.exit(1);
     }
 };

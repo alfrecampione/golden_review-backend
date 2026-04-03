@@ -17,20 +17,24 @@ class LLMService {
     }
 
     async validateAccess() {
-        const command = new InvokeModelCommand({
-            modelId: MODEL_ID,
-            contentType: 'application/json',
-            accept: 'application/json',
-            body: JSON.stringify({
-                anthropic_version: API_VERSION,
-                messages: [{ role: 'user', content: 'Reply with {} only.' }],
-                max_tokens: 10,
-                temperature: 0,
-            }),
-        });
+        try {
+            const command = new InvokeModelCommand({
+                modelId: MODEL_ID,
+                contentType: 'application/json',
+                accept: 'application/json',
+                body: JSON.stringify({
+                    anthropic_version: API_VERSION,
+                    messages: [{ role: 'user', content: 'Reply with {} only.' }],
+                    max_tokens: 10,
+                    temperature: 0,
+                }),
+            });
 
-        await this.client.send(command);
-        return true;
+            await this.client.send(command);
+            return true;
+        } catch (error) {
+            throw new Error(`Bedrock validation failed: ${error.name || 'Error'} - ${error.message}`);
+        }
     }
 
     async invoke(prompt, maxTokens = 1500) {

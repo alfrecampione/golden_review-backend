@@ -2,6 +2,12 @@ import 'dotenv/config';
 import { TextractClient, AnalyzeDocumentCommand } from '@aws-sdk/client-textract';
 
 const MINIMAL_PNG_BASE64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sWk0S8AAAAASUVORK5CYII=';
+const TEXTRACT_DOCUMENT_VALIDATION_ERRORS = new Set([
+    'BadDocumentException',
+    'DocumentTooLargeException',
+    'InvalidParameterException',
+    'UnsupportedDocumentException',
+]);
 
 class OCRService {
     constructor() {
@@ -15,13 +21,21 @@ class OCRService {
     }
 
     async validateAccess() {
-        const command = new AnalyzeDocumentCommand({
-            Document: { Bytes: Buffer.from(MINIMAL_PNG_BASE64, 'base64') },
-            FeatureTypes: ['FORMS', 'TABLES'],
-        });
+        try {
+            const command = new AnalyzeDocumentCommand({
+                Document: { Bytes: Buffer.from(MINIMAL_PNG_BASE64, 'base64') },
+                FeatureTypes: ['FORMS', 'TABLES'],
+            });
 
-        await this.client.send(command);
-        return true;
+            await this.client.send(command);
+            return true;
+        } catch (error) {
+            if (TEXTRACT_DOCUMENT_VALIDATION_ERRORS.has(error.name)) {
+                return true;
+            }
+
+            throw new Error(`Textract validation failed: ${error.name || 'Error'} - ${error.message}`);
+        }
     }
 
     async extract(fileBuffer) {
