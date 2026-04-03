@@ -5,8 +5,14 @@ const MODEL_ID = 'us.anthropic.claude-haiku-4-5-20251001-v1:0';
 const API_VERSION = 'bedrock-2023-05-31';
 
 class LLMService {
-    constructor(region = 'us-east-1') {
-        this.client = new BedrockRuntimeClient({ region });
+    constructor() {
+        this.client = new BedrockRuntimeClient({
+            region: process.env.BEDROCK_REGION || 'us-east-1',
+            credentials: {
+                accessKeyId: process.env.BEDROCK_ACCESS_KEY_ID,
+                secretAccessKey: process.env.BEDROCK_SECRET_ACCESS_KEY,
+            },
+        });
     }
 
     async invoke(prompt, maxTokens = 1500) {
