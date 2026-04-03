@@ -34,6 +34,23 @@ const DOCUMENT_TYPE_DESCRIPTIONS = Object.freeze({
     [DOCUMENT_TYPES.UM_REJECTION_GTI_EN]: 'Uninsured Motorist (UM) Rejection Disclosure - Golden Trust Insurance (English)',
 });
 
+const DOCUMENT_TYPE_LABELS = Object.freeze({
+    [DOCUMENT_TYPES.DECLARATION_PAGE]: 'Declaration Page',
+    [DOCUMENT_TYPES.APPLICATION]: 'Application',
+    [DOCUMENT_TYPES.ID_CARD]: 'ID Card',
+    [DOCUMENT_TYPES.DISCLAIMED_INSURANCE_EN]: 'Disclaimed Insurance (EN)',
+    [DOCUMENT_TYPES.DISCLAIMED_INSURANCE_ES]: 'Disclaimed Insurance (ES)',
+    [DOCUMENT_TYPES.HOUSEHOLD_MEMBER_DISCLOSURE_EN]: 'Household Member Disclosure (EN)',
+    [DOCUMENT_TYPES.HOUSEHOLD_MEMBER_DISCLOSURE_ES]: 'Household Member Disclosure (ES)',
+    [DOCUMENT_TYPES.COMP_COLLISION_EXCLUDED_EN]: 'Comp/Collision Excluded (EN)',
+    [DOCUMENT_TYPES.BI_REJECTION_EN]: 'BI Rejection (EN)',
+    [DOCUMENT_TYPES.BI_REJECTION_ES]: 'BI Rejection (ES)',
+    [DOCUMENT_TYPES.UM_REJECTION_ES]: 'UM Rejection (ES)',
+    [DOCUMENT_TYPES.UM_REJECTION_EN]: 'UM Rejection (EN)',
+    [DOCUMENT_TYPES.UM_REJECTION_GTI_ES]: 'UM Rejection GTI (ES)',
+    [DOCUMENT_TYPES.UM_REJECTION_GTI_EN]: 'UM Rejection GTI (EN)',
+});
+
 const HEAD_CARRIER_MAP = Object.freeze({
     2: 'progressive',
 });
@@ -136,6 +153,7 @@ async function resolveCarrierName(carrierId) {
 export {
     DOCUMENT_TYPES,
     DOCUMENT_TYPE_DESCRIPTIONS,
+    DOCUMENT_TYPE_LABELS,
     MIN_CONFIDENCE,
     getSchema,
     getInstructions,

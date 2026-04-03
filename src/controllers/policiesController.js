@@ -6,7 +6,7 @@ import { s3, BUCKET } from '../lib/s3.js';
 import {
     getFilesForCustomer,
 } from '../services/applicationSyncService.js';
-import { resolveCarrierName } from '../services/carrierConfig.js';
+import { resolveCarrierName, DOCUMENT_TYPE_LABELS } from '../services/carrierConfig.js';
 import { processCustomerFiles } from '../services/documentPipeline.js';
 import { buildPolicyWhereClause } from '../lib/policyQueryUtils.js';
 
@@ -585,6 +585,7 @@ class PoliciesController {
                 created_on: d.created_on || null,
                 modified_on: d.modified_on || null,
                 type: d.type,
+                type_label: DOCUMENT_TYPE_LABELS[d.type] || d.type,
                 carrier: d.carrier || null,
                 confidence: d.confidence != null ? Number(d.confidence) : null,
             }));
