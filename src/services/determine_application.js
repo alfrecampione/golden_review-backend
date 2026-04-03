@@ -1,16 +1,8 @@
 import 'dotenv/config';
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '../lib/s3.js';
 
 import { PDFParse } from 'pdf-parse';
-
-const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'us-east-1',
-    credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
-    },
-});
-const BUCKET = process.env.AWS_S3_BUCKET;
 
 const BASE_APPLICATION_KEYWORDS = ['application for insurance'];
 const CARRIER_FLOW_BY_ID = {

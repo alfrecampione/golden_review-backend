@@ -1,6 +1,9 @@
+import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '../lib/s3.js';
 import prisma from '../prisma.js';
 import llm from './llmService.js';
 import { DOCUMENT_TYPES, MIN_CONFIDENCE, getSchema, getInstructions } from './carrierConfig.js';
@@ -66,14 +69,33 @@ function isPdf(file) {
     return file.s3_url && String(file.file_name_reported || '').toLowerCase().endsWith('.pdf');
 }
 
+function parseS3Key(s3Url) {
+    try {
+        const url = new URL(s3Url);
+        return decodeURIComponent(url.pathname.replace(/^\//, ''));
+    } catch {
+        return null;
+    }
+}
+
+function streamToBuffer(stream) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        stream.on('data', chunk => chunks.push(chunk));
+        stream.on('error', reject);
+        stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+}
+
 async function downloadToLocal(fileId, s3Url) {
     const localPath = path.join(TMP_DIR, `${fileId}.pdf`);
     if (fs.existsSync(localPath)) return fs.readFileSync(localPath);
 
-    const res = await fetch(s3Url);
-    if (!res.ok) return null;
+    const key = parseS3Key(s3Url);
+    if (!key) return null;
 
-    const buffer = Buffer.from(await res.arrayBuffer());
+    const res = await s3.send(new GetObjectCommand({ Bucket: BUCKET, Key: key }));
+    const buffer = await streamToBuffer(res.Body);
     fs.writeFileSync(localPath, buffer);
     return buffer;
 }

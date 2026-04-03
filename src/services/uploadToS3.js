@@ -1,15 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import 'dotenv/config';
-
-const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'us-east-1',
-    credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
-    },
-});
+import { PutObjectCommand } from '@aws-sdk/client-s3';
+import { s3, BUCKET } from '../lib/s3.js';
 
 // Upload a local file to S3 with a unique key to avoid collisions.
 export async function uploadToS3(filePath, contactId, fileId = null) {
@@ -18,7 +10,6 @@ export async function uploadToS3(filePath, contactId, fileId = null) {
     }
 
     const fileName = path.basename(filePath);
-    const bucket = process.env.AWS_S3_BUCKET;
     const fileExt = path.extname(fileName);
     const baseName = path.basename(fileName, fileExt);
 
@@ -30,13 +21,13 @@ export async function uploadToS3(filePath, contactId, fileId = null) {
     const fileContent = fs.readFileSync(filePath);
 
     const params = {
-        Bucket: bucket,
+        Bucket: BUCKET,
         Key: key,
         Body: fileContent
     };
 
     await s3.send(new PutObjectCommand(params));
 
-    const fileUrl = `https://${bucket}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
+    const fileUrl = `https://${BUCKET}.s3.${process.env.AWS_REGION || 'us-east-1'}.amazonaws.com/${key}`;
     return fileUrl;
 }

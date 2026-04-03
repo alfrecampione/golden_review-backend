@@ -1,7 +1,8 @@
 import prisma from '../prisma.js';
 import { Prisma } from '@prisma/client';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
+import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { s3, BUCKET } from '../lib/s3.js';
 import {
     getStoredJsonForCustomer,
     saveJsonForCustomer,
@@ -10,14 +11,6 @@ import {
 import { resolveCarrierName } from '../services/carrierConfig.js';
 import { processCustomerFiles } from '../services/documentPipeline.js';
 import { buildPolicyWhereClause } from '../lib/policyQueryUtils.js';
-
-const s3 = new S3Client({
-    region: process.env.AWS_REGION || 'us-east-1',
-    credentials: {
-        accessKeyId: process.env.AWS_S3_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_S3_SECRET_ACCESS_KEY,
-    },
-});
 
 export async function resolvePolicyContext(policyId) {
     const result = await prisma.$queryRaw`
@@ -929,15 +922,14 @@ class PoliciesController {
             // Extract S3 key from the stored URL (format: https://BUCKET.s3.REGION.amazonaws.com/KEY)
             const urlObj = new URL(s3Url);
             const key = urlObj.pathname.slice(1); // Remove leading '/'
-            const bucket = process.env.AWS_S3_BUCKET;
 
-            if (!bucket) {
+            if (!BUCKET) {
                 return reply.code(500).send({ success: false, message: 'S3 bucket not configured' });
             }
 
             // Generate a presigned URL valid for 60 seconds, forcing download with original filename
             const command = new GetObjectCommand({
-                Bucket: bucket,
+                Bucket: BUCKET,
                 Key: key,
                 ResponseContentDisposition: `attachment; filename="${fileName.replace(/"/g, '')}"`,
             });
