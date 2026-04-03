@@ -115,12 +115,13 @@ const start = async () => {
     try {
         const { llmAccess, ocrAccess } = await validateAiDependencies();
         if (!llmAccess) {
-            throw new Error('Unable to access Bedrock LLM service. Check credentials and permissions.');
+            console.log('Unable to access Bedrock LLM service. Check credentials and permissions.');
+            return;
         }
         if (!ocrAccess) {
-            throw new Error('Unable to access Bedrock Textract service. Check credentials and permissions.');
+            console.log('Unable to access Bedrock Textract service. Check credentials and permissions.');
+            return;
         }
-
         startUserSyncJob();
         startPoliciesSyncJob();
         const onlyYesterday = process.env.ONLY_YESTERDAY_LOGS ? process.env.ONLY_YESTERDAY_LOGS === 'true' : true;
