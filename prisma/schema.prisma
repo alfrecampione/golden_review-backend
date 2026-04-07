@@ -12,7 +12,7 @@ datasource db {
 model session {
   sid    String   @id @db.VarChar
   sess   Json     @db.Json
-  expire DateTime @db.Timestamp(6)
+  expire DateTime @db.Timestamptz(6)
 
   @@index([expire], map: "IDX_session_expire")
   @@map("session")
@@ -30,9 +30,9 @@ model User {
   department   String?
   position     String?
   roles        String[]      @default([])
-  lastAccess   DateTime?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  lastAccess   DateTime?     @db.Timestamptz(6)
+  createdAt    DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime      @updatedAt @db.Timestamptz(6)
   userCarriers UserCarrier[]
   userPolicies UserPolicy[]
 
@@ -44,8 +44,8 @@ model UserCarrier {
   id        String   @id @default(uuid())
   userId    String
   carrierId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, carrierId], map: "user_carrier_user_id_carrier_id_key")
@@ -58,8 +58,8 @@ model UserPolicy {
   userId     String?
   policyId   String   @unique
   autoAssign Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @db.Timestamptz(6)
   user       User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_policy")
@@ -74,7 +74,7 @@ model AuthLog {
   failureReason String?
   ipAddress     String?
   userAgent     String?
-  createdAt     DateTime @default(now())
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
 
   @@index([email])
   @@index([createdAt])
@@ -86,7 +86,7 @@ model UpdatePolicyJobLog {
   id        String   @id @default(uuid())
   policyIds Json     @db.Json
   count     Int
-  createdAt DateTime @default(now())
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("update_policy_job_log")
   @@schema("goldenaudit")
@@ -94,7 +94,7 @@ model UpdatePolicyJobLog {
 
 model FileSyncJobLog {
   id              Int      @id @default(autoincrement())
-  createdAt       DateTime @default(now()) @map("created_at")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   processedLogIds Json // Array of UpdatePolicyJobLog IDs that were processed
   customerCount   Int
   policyCount     Int
@@ -108,7 +108,7 @@ model UserApplication {
   customerId  Int      @unique
   fileId      String
   isProcessed Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("user_application")
   @@schema("goldenaudit")
@@ -118,21 +118,21 @@ model TempJSONStorage {
   id         String   @id @default(uuid())
   customerId Int      @unique
   data       Json     @db.Json
-  createdAt  DateTime @default(now())
+  createdAt  DateTime @default(now()) @db.Timestamptz(6)
 
   @@map("temp_json_storage")
   @@schema("goldenaudit")
 }
 
 model CustomerDocument {
-  id         String   @id @default(uuid())
+  id         String    @id @default(uuid())
   customerId Int
   fileId     String
   type       String // declaration_page, application, id_card, other
   carrier    String
   confidence Float
-  data       Json     @db.Json
-  createdAt  DateTime @default(now())
+  data       Json      @db.Json
+  createdAt  DateTime? @db.Timestamptz(6) // fecha de subida a QQ Catalyst (created_on de qq.contact_files)
 
   @@unique([customerId, type, carrier])
   @@map("customer_document")

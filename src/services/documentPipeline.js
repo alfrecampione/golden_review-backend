@@ -140,8 +140,8 @@ async function processCustomerFiles({ customerId, carrierName, files, policyNumb
                 continue;
             }
 
-            // If the document carries a policy number, verify it matches the policy being audited
-            if (doc.policy_number && policyNumber && doc.policy_number !== policyNumber) {
+            // Policy number check only for carrier application documents (for now)
+            if (doc.type === DOCUMENT_TYPES.APPLICATION && doc.policy_number && policyNumber && doc.policy_number !== policyNumber) {
                 console.log(`[Pipeline] Policy number mismatch for file ${fileId}: document has "${doc.policy_number}", expected "${policyNumber}" — skipping`);
                 continue;
             }
@@ -153,6 +153,9 @@ async function processCustomerFiles({ customerId, carrierName, files, policyNumb
                 data = await extractApplicationData(buffer, carrier);
             }
 
+            // Use the QQ Catalyst created_on date as the document creation date
+            const qqCreatedOn = file.created_on ? new Date(file.created_on) : null;
+
             const saved = await prisma.customerDocument.upsert({
                 where: {
                     customerId_type_carrier: { customerId, type: doc.type, carrier },
@@ -161,6 +164,7 @@ async function processCustomerFiles({ customerId, carrierName, files, policyNumb
                     fileId,
                     confidence: doc.confidence,
                     data: data || {},
+                    createdAt: qqCreatedOn,
                 },
                 create: {
                     customerId,
@@ -169,6 +173,7 @@ async function processCustomerFiles({ customerId, carrierName, files, policyNumb
                     carrier,
                     confidence: doc.confidence,
                     data: data || {},
+                    createdAt: qqCreatedOn,
                 },
             });
 
