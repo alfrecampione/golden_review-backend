@@ -12,10 +12,21 @@ const TMP_DIR = os.tmpdir();
 
 /* ── Prompts ─────────────────────────────────────── */
 
-function buildClassificationPrompt() {
+function buildClassificationPrompt(policyNumber) {
     const typeList = Object.entries(DOCUMENT_TYPE_DESCRIPTIONS)
         .map(([type, desc]) => `- ${type} = ${desc}`)
         .join('\n');
+
+    const policyNumberBlock = policyNumber
+        ? `\n\nPOLICY NUMBER VERIFICATION (CRITICAL):
+The expected policy number for this audit is: "${policyNumber}".
+For documents of type "application", "declaration_page", and "id_card":
+- Search the ENTIRE document text for the EXACT string "${policyNumber}".
+- Set "policy_number_match" to true ONLY if you find that exact string somewhere in the document.
+- Set "policy_number_match" to false if that exact string does NOT appear anywhere in the document.
+- Do NOT try to interpret, extract, or guess what the policy number is. Just do a literal text match of "${policyNumber}".
+For all other document types, always set "policy_number_match" to true.`
+        : '';
 
     return `You are an expert insurance document classifier.
 
@@ -31,7 +42,7 @@ Return JSON:
       "type": "<one of the types listed below>",
       "confidence": number (0-1),
       "carrier": "string (e.g. progressive, geico, state_farm, etc.) or null if unknown",
-      "policy_number": "string or null (extract the policy number printed on the document if visible, otherwise null)"
+      "policy_number_match": true or false
     }
   ]
 }
@@ -43,8 +54,7 @@ Important:
 - A PDF can contain MULTIPLE documents of different types
 - Return ALL documents found, not just one
 - Only use the types listed above. Do NOT return any other type
-- Be specific about the carrier name (lowercase, underscored)
-- Extract the policy number from each document if it is clearly visible; return null if not present`;
+- Be specific about the carrier name (lowercase, underscored)${policyNumberBlock}`;
 }
 
 function buildExtractionPrompt(carrier) {
@@ -106,8 +116,8 @@ async function downloadToLocal(fileId, s3Url) {
 
 /* ── Core pipeline steps ─────────────────────────── */
 
-async function classifyDocuments(pdfBuffer) {
-    const result = await llm.invokeWithPdf(pdfBuffer, buildClassificationPrompt(), 500);
+async function classifyDocuments(pdfBuffer, policyNumber) {
+    const result = await llm.invokeWithPdf(pdfBuffer, buildClassificationPrompt(policyNumber), 500);
     return result?.documents ?? [];
 }
 
@@ -133,16 +143,22 @@ async function processCustomerFiles({ customerId, carrierName, files, policyNumb
             continue;
         }
 
-        const documents = await classifyDocuments(buffer);
+        const documents = await classifyDocuments(buffer, policyNumber);
+
+        const POLICY_VERIFIED_TYPES = new Set([
+            DOCUMENT_TYPES.APPLICATION,
+            DOCUMENT_TYPES.DECLARATION_PAGE,
+            DOCUMENT_TYPES.ID_CARD,
+        ]);
 
         for (const doc of documents) {
             if (doc.confidence < MIN_CONFIDENCE) {
                 continue;
             }
 
-            // Policy number check only for carrier application documents (for now)
-            if (doc.type === DOCUMENT_TYPES.APPLICATION && doc.policy_number && policyNumber && doc.policy_number !== policyNumber) {
-                console.log(`[Pipeline] Policy number mismatch for file ${fileId}: document has "${doc.policy_number}", expected "${policyNumber}" — skipping`);
+            // For application, declaration page, and id card: skip if expected policy number not found in document
+            if (policyNumber && POLICY_VERIFIED_TYPES.has(doc.type) && doc.policy_number_match === false) {
+                console.log(`[Pipeline] Policy number "${policyNumber}" not found in ${doc.type} document (file ${fileId}) — skipping`);
                 continue;
             }
 
