@@ -42,10 +42,17 @@ async function getApplicationDataForCustomer(reply, customerId) {
         return reply.code(404).send({ success: false, message: 'Contact not found' });
     }
 
-    const doc = await prisma.customerDocument.findFirst({
-        where: { customerId: Number(customerId), type: 'application' },
-        orderBy: { createdAt: 'desc' },
-    });
+    // Join with qq.contact_files to order by the original QQ created_on timestamp
+    const rows = await prisma.$queryRaw`
+        SELECT cd.id, cd.data
+        FROM goldenaudit.customer_document cd
+        JOIN qq.contact_files cf ON cf.file_id::text = cd."fileId"
+        WHERE cd."customerId" = ${Number(customerId)} AND cd.type = 'application'
+        ORDER BY cf.created_on DESC NULLS LAST
+        LIMIT 1
+    `;
+
+    const doc = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
     if (!doc?.data || !isJsonObject(doc.data)) {
         return reply.code(404).send({
@@ -73,10 +80,17 @@ async function saveApplicationDataForCustomer(reply, customerId, payload) {
         });
     }
 
-    const existing = await prisma.customerDocument.findFirst({
-        where: { customerId: Number(customerId), type: 'application' },
-        orderBy: { createdAt: 'desc' },
-    });
+    // Join with qq.contact_files to find the most recent application by QQ created_on
+    const existingRows = await prisma.$queryRaw`
+        SELECT cd.id
+        FROM goldenaudit.customer_document cd
+        JOIN qq.contact_files cf ON cf.file_id::text = cd."fileId"
+        WHERE cd."customerId" = ${Number(customerId)} AND cd.type = 'application'
+        ORDER BY cf.created_on DESC NULLS LAST
+        LIMIT 1
+    `;
+
+    const existing = Array.isArray(existingRows) && existingRows.length > 0 ? existingRows[0] : null;
 
     if (!existing) {
         return reply.code(404).send({

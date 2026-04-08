@@ -132,7 +132,7 @@ model CustomerDocument {
   carrier    String
   confidence Float
   data       Json      @db.Json
-  createdAt  DateTime? @db.Timestamptz(6) // fecha de subida a QQ Catalyst (created_on de qq.contact_files)
+  createdAt  DateTime? @default(now())
 
   @@unique([customerId, type, carrier])
   @@map("customer_document")
