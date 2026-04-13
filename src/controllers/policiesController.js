@@ -179,6 +179,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ businessType: 'N', assignment: 'assigned' })}
                     ${searchCondition}
@@ -201,13 +202,15 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u."fullName" as assigned_user_name
+                    u."fullName" as assigned_user_name,
+                    cprod.display_name as producer
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ businessType: 'N', assignment: 'assigned' })}
                     ${searchCondition}
@@ -228,7 +231,8 @@ class PoliciesController {
                 premium: policy.premium !== null ? Number(policy.premium) : null,
                 csr: policy.csr,
                 assigned_user_id: policy.assigned_user_id || null,
-                assigned_user_name: policy.assigned_user_name || null
+                assigned_user_name: policy.assigned_user_name || null,
+                producer: policy.producer || null
             }));
 
             return {
@@ -308,6 +312,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ businessType: 'R', assignment: 'assigned', requireCarrierChange: true })}
                     ${searchCondition}
@@ -330,7 +335,8 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u."fullName" as assigned_user_name
+                    u."fullName" as assigned_user_name,
+                    cprod.display_name as producer
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
@@ -338,6 +344,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
                 INNER JOIN qq.policies p1 ON p1.policy_id = p.prior_policy_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ businessType: 'R', assignment: 'assigned', requireCarrierChange: true })}
                     ${searchCondition}
@@ -359,6 +366,7 @@ class PoliciesController {
                 csr: policy.csr,
                 assigned_user_id: policy.assigned_user_id || null,
                 assigned_user_name: policy.assigned_user_name || null,
+                producer: policy.producer || null,
             }));
 
             return {
@@ -427,6 +435,7 @@ class PoliciesController {
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ assignment: 'unassigned' })}
                     ${searchCondition}
@@ -449,13 +458,15 @@ class PoliciesController {
                     p.premium, 
                     c2.display_name as csr,
                     u.id as assigned_user_id,
-                    u."fullName" as assigned_user_name
+                    u."fullName" as assigned_user_name,
+                    cprod.display_name as producer
                 FROM goldenaudit.user_policy up
                 INNER JOIN qq.policies p ON up."policyId"::bigint = p.policy_id
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 INNER JOIN qq.locations l ON l.location_id = c.location_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 LEFT JOIN goldenaudit."user" u ON u.id = up."userId"
                 WHERE ${buildPolicyWhereClause({ assignment: 'unassigned' })}
                     ${searchCondition}
@@ -475,7 +486,8 @@ class PoliciesController {
                 premium: policy.premium !== null ? Number(policy.premium) : null,
                 csr: policy.csr,
                 assigned_user_id: policy.assigned_user_id || null,
-                assigned_user_name: policy.assigned_user_name || null
+                assigned_user_name: policy.assigned_user_name || null,
+                producer: policy.producer || null
             }));
 
             return {
@@ -649,13 +661,15 @@ class PoliciesController {
                     p.business_type,
                     c3.display_name as mga,
                     p.policy_status,
-                    p.customer_id
+                    p.customer_id,
+                    cprod.display_name as producer
                 FROM qq.policies p
                 INNER JOIN qq.contacts c ON c.entity_id = p.customer_id
                 INNER JOIN qq.contacts c1 ON c1.entity_id = p.carrier_id
                 INNER JOIN qq.contacts c2 ON c2.entity_id = p.csr_id
                 LEFT JOIN admin.lob lob ON lob.lob_id = p.lob_id
                 LEFT JOIN qq.contacts c3 ON c3.entity_id = p.mga_id
+                LEFT JOIN qq.contacts cprod ON cprod.entity_id = p.producer_ids[1]
                 WHERE p.policy_id = ${policyId}
                 LIMIT 1
             `;
@@ -695,6 +709,7 @@ class PoliciesController {
                     business_type: businessTypeMap[p.business_type] || p.business_type || null,
                     mga: p.mga || null,
                     status: statusMap[p.policy_status] || p.policy_status || null,
+                    producer: p.producer || null,
                     application_is_processed: applicationIsProcessed,
                 },
             };
