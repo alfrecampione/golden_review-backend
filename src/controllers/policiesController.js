@@ -6,6 +6,7 @@ import { s3, BUCKET } from '../lib/s3.js';
 import {
     getFilesForCustomer,
 } from '../services/applicationSyncService.js';
+import { downloadFilesToDB } from '../services/contactFilesService.js';
 import { resolveCarrierName, DOCUMENT_TYPE_LABELS } from '../services/carrierConfig.js';
 import { processCustomerFiles } from '../services/documentPipeline.js';
 import { buildPolicyWhereClause } from '../lib/policyQueryUtils.js';
@@ -860,6 +861,13 @@ class PoliciesController {
 
             // Resolve carrier name from carrierId via head_carriers
             const carrierName = await resolveCarrierName(carrierId);
+
+            // Sync files from QQ Catalyst to DB (in case cron missed them)
+            try {
+                await downloadFilesToDB(customerId);
+            } catch (syncErr) {
+                console.error(`[auditPolicy] File sync failed for customer ${customerId}:`, syncErr);
+            }
 
             // Get all files for the customer
             const files = await getFilesForCustomer(customerId);

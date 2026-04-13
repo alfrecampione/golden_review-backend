@@ -199,6 +199,7 @@ export async function downloadFilesToDB(contactId) {
     ensureDir(absOutDir);
 
     const docs = await listAllUnique(contactId);
+    console.log(`Contact ${contactId}: ${docs.length} archivos encontrados en QQ Catalyst`);
     const cutoff = new Date();
     cutoff.setFullYear(cutoff.getFullYear() - 1);
     const filteredDocs = docs.filter((f) => {
