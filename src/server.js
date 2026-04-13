@@ -21,9 +21,8 @@ const __dirname = path.dirname(__filename);
 // SSL certificate paths
 const sslPath = path.join(__dirname, '../../front/src/ssl');
 const httpsOptions = {
-    key: fs.readFileSync(path.join(sslPath, 'server.key')),
-    cert: fs.readFileSync(path.join(sslPath, '31e810c645f53345.crt')),
-    ca: fs.readFileSync(path.join(sslPath, 'gd_bundle-g2.crt'))
+    key: fs.readFileSync(path.join(sslPath, 'cloudflare-origin.key')),
+    cert: fs.readFileSync(path.join(sslPath, 'cloudflare-origin.crt')),
 };
 
 const fastify = Fastify({
