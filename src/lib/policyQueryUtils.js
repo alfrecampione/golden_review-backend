@@ -34,7 +34,7 @@ export function buildPolicySyncWhereClause({
         `p.policy_id IS NOT NULL`,
         `p.business_type = '${businessType}'`,
         ACTIVE_POLICY_STATUS_CONDITION,
-        `p.binder_date >= '01/01/2026'`,
+        `p.created_on >= '04/01/2026'`,
         `p.lob_id = 6`,
         `l.location_type = 1`,
     ];
